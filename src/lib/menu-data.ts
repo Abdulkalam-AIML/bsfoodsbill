@@ -1,6 +1,6 @@
 // ============================================
 // BS FOODS - Complete Menu Database v3
-// Images: local SVGs in /public/menu/ (never break)
+// Images: local JPGs in /public/menu/ (never break)
 // ============================================
 import type { MenuItem } from '@/types';
 

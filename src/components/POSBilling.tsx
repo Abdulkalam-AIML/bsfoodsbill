@@ -8,7 +8,7 @@ import {
   UtensilsCrossed, Percent, X, ArrowLeft, ImageOff
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import { downloadReceipt, printReceipt } from '@/lib/pdf';
+import { downloadThermalReceipt, printBill } from '@/lib/pdf';
 import { sendWhatsApp, shareWhatsAppNoNumber } from '@/lib/whatsapp';
 import { toast } from 'sonner';
 import type { MenuItem } from '@/types';
@@ -110,6 +110,69 @@ function MenuCard({
   );
 }
 
+/* ─────────── Table Selection Grid ─────────── */
+function TableGrid({ 
+  tables, 
+  activeTable, 
+  onSelect, 
+  onClear 
+}: { 
+  tables: import('@/types').TableState[];
+  activeTable: string;
+  onSelect: (num: number) => void;
+  onClear: (num: number) => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 p-3 shrink-0">
+      {tables.map((table) => {
+        const isOccupied = table.status === 'occupied';
+        const isActive = activeTable === table.number.toString();
+        
+        return (
+          <motion.button
+            key={table.id}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onSelect(table.number)}
+            className={`relative flex flex-col items-center justify-center p-2 rounded-xl border transition-all duration-300 ${
+              isActive 
+                ? 'border-primary-500 bg-primary-500/10 shadow-neon' 
+                : isOccupied
+                  ? 'border-orange-500/50 bg-orange-500/5 shadow-[0_0_15px_rgba(249,115,22,0.1)]'
+                  : 'border-white/5 bg-white/[0.02] hover:bg-white/5'
+            }`}
+          >
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${
+              isOccupied ? 'text-orange-400' : 'text-white/40'
+            }`}>
+              Table {table.number}
+            </span>
+            {isOccupied && (
+              <div className="mt-1 flex flex-col items-center">
+                <span className="text-[9px] text-orange-200/60 leading-none">
+                  {table.items.length} items
+                </span>
+                <span className="text-[10px] font-black text-orange-400 mt-0.5">
+                  ₹{table.items.reduce((s, i) => s + (i.price * i.quantity), 0)}
+                </span>
+              </div>
+            )}
+            {!isOccupied && <span className="text-[9px] text-emerald-400/40 mt-1">Available</span>}
+            
+            {isOccupied && isActive && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onClear(table.number); }}
+                className="absolute -top-1 -right-1 p-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500 transition-all hover:text-white"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            )}
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ─────────── Main POS Billing ─────────── */
 export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => void }) {
   const {
@@ -120,9 +183,23 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
     discountType, setDiscountType, discountValue, setDiscountValue,
     subtotal, discountAmount, total, createBill, settings, userRole,
     searchQuery, setSearchQuery, activeCategory, setActiveCategory,
+    tables, holdTable, resumeTable, clearTable, completeOrder, loadTables
   } = useStore();
 
   const [showCart, setShowCart] = useState(false);
+
+  // Initialize tables on mount
+  useState(() => {
+    loadTables();
+  });
+
+  const handleTableSelect = (num: number) => {
+    if (tableNumber === num.toString()) return;
+    
+    // If current cart has items and no table is assigned, or a different table is assigned, 
+    // maybe prompt to hold? For simplicity, we just resume the selected table.
+    resumeTable(num);
+  };
 
   // Categories from live menu
   const categories = useMemo(() => {
@@ -154,17 +231,21 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
     (print: boolean, whatsapp: boolean) => {
       if (cart.length === 0) { toast.error('Cart is empty!'); return; }
       const bill = createBill(print, whatsapp);
+      
       if (print) {
-        try { printReceipt(bill, settings); } catch { downloadReceipt(bill, settings); }
+        try { printBill(bill, settings); } catch { downloadThermalReceipt(bill, settings); }
       }
       if (whatsapp) {
         if (bill.customerPhone) sendWhatsApp(bill.customerPhone, bill, settings);
         else shareWhatsAppNoNumber(bill, settings);
       }
+      
+      // Success logic
+      completeOrder();
       setShowCart(false);
-      toast.success(`Bill #${bill.billNumber} created! 🎉`);
+      toast.success(`Bill #${bill.billNumber} complete! Cart reset. 🎉`);
     },
-    [cart, createBill, settings],
+    [cart, createBill, settings, completeOrder],
   );
 
   const cartPanelProps = {
@@ -178,6 +259,12 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
     discountType, setDiscountType,
     discountValue, setDiscountValue,
     userRole, onFinalize: handleFinalize,
+    onHold: () => {
+      const num = parseInt(tableNumber);
+      if (isNaN(num)) { toast.error('Please select a table first!'); return; }
+      holdTable(num);
+      toast.success(`Bill held for Table ${num}`);
+    }
   };
 
   return (
@@ -208,48 +295,49 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* ── Left: Menu ── */}
+        {/* ── Left: Menu Area ── */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Search */}
-          <div className="p-3 pb-2 shrink-0">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-              <input
-                type="text"
-                placeholder="Search menu items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="glass-input pl-10 py-2.5"
-              />
+          
+          {/* Table Management */}
+          <TableGrid 
+            tables={tables} 
+            activeTable={tableNumber} 
+            onSelect={handleTableSelect} 
+            onClear={clearTable} 
+          />
+
+          <div className="border-t border-white/[0.06] pt-1">
+            {/* Search */}
+            <div className="p-3 pb-2 shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <input
+                  type="text"
+                  placeholder="Search menu items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="glass-input pl-10 py-2.5"
+                />
+              </div>
+            </div>
+
+            {/* Category chips */}
+            <div className="px-3 py-2 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all duration-200 whitespace-nowrap ${
+                    activeCategory === cat
+                      ? 'bg-primary-500 text-white shadow-neon'
+                      : 'bg-white/[0.04] text-white/50 border border-white/[0.06] hover:bg-white/[0.08] hover:text-white/80'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
             </div>
           </div>
-
-          {/* Category chips */}
-          <div className="px-3 py-2 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all duration-200 whitespace-nowrap ${
-                  activeCategory === cat
-                    ? 'bg-primary-500 text-white shadow-neon'
-                    : 'bg-white/[0.04] text-white/50 border border-white/[0.06] hover:bg-white/[0.08] hover:text-white/80'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Count info */}
-          {filteredMenu.length > 0 && (
-            <div className="px-3 pb-1 shrink-0">
-              <p className="text-[10px] text-white/25">
-                {filteredMenu.length} item{filteredMenu.length !== 1 ? 's' : ''}
-                {activeCategory !== 'All' ? ` in ${activeCategory}` : ''}
-              </p>
-            </div>
-          )}
 
           {/* Menu grid */}
           <div className="flex-1 overflow-y-auto p-3 pt-1">
@@ -277,11 +365,6 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
               <div className="flex flex-col items-center justify-center py-20 text-white/30">
                 <UtensilsCrossed className="w-12 h-12 mb-3 opacity-50" />
                 <p className="text-sm">No items found</p>
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="mt-2 text-xs text-primary-400 hover:underline">
-                    Clear search
-                  </button>
-                )}
               </div>
             )}
           </div>
@@ -352,6 +435,7 @@ interface CartPanelProps {
   setDiscountValue: (v: number) => void;
   userRole: string;
   onFinalize: (print: boolean, whatsapp: boolean) => void;
+  onHold: () => void;
 }
 
 function CartPanelContent({
@@ -361,7 +445,7 @@ function CartPanelContent({
   orderType, setOrderType, tableNumber, setTableNumber,
   paymentMethod, setPaymentMethod,
   discountType, setDiscountType, discountValue, setDiscountValue,
-  userRole, onFinalize,
+  userRole, onFinalize, onHold
 }: CartPanelProps) {
   return (
     <div className="flex flex-col h-full">
@@ -371,7 +455,6 @@ function CartPanelContent({
           <div className="flex flex-col items-center justify-center py-16 text-white/30">
             <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
             <p className="text-sm font-medium">Cart is empty</p>
-            <p className="text-xs mt-1 text-white/20">Tap menu items to add</p>
           </div>
         ) : (
           <>
@@ -379,31 +462,18 @@ function CartPanelContent({
               <span className="text-xs text-white/40 uppercase tracking-wider font-semibold">
                 {cart.reduce((s, c) => s + c.quantity, 0)} items
               </span>
-              <button onClick={clearCart} className="text-xs text-red-400/70 hover:text-red-400 transition-colors">
-                Clear All
+              <button onClick={onHold} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-400 text-xs font-bold border border-orange-500/20 hover:bg-orange-500/20 transition-all">
+                <UtensilsCrossed className="w-3 h-3" /> Hold Bill
               </button>
             </div>
             <AnimatePresence mode="popLayout">
               {cart.map((item) => (
                 <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
+                  key={item.id} layout initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]"
                 >
-                  {/* Thumbnail */}
                   <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-white/[0.04]">
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      width={40}
-                      height={40}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                      unoptimized={false}
-                    />
+                    <Image src={item.image} alt={item.name} width={40} height={40} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-white truncate leading-tight">{item.name}</p>
@@ -412,42 +482,25 @@ function CartPanelContent({
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
-                    >
+                    <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
                       <Minus className="w-3 h-3 text-white/60" />
                     </button>
                     <span className="w-5 text-center text-xs font-bold text-white">{item.quantity}</span>
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="w-6 h-6 rounded-lg bg-primary-500/20 hover:bg-primary-500/30 flex items-center justify-center transition-colors"
-                    >
+                    <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-6 h-6 rounded-lg bg-primary-500/20 hover:bg-primary-500/30 flex items-center justify-center transition-colors">
                       <Plus className="w-3 h-3 text-primary-400" />
                     </button>
                   </div>
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="p-1 rounded-lg hover:bg-red-500/10 text-white/20 hover:text-red-400 transition-colors shrink-0"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
                 </motion.div>
               ))}
             </AnimatePresence>
 
             {/* Order Details */}
             <div className="space-y-2.5 pt-3 border-t border-white/[0.06] mt-3">
-              {/* Order Type */}
               <div className="flex gap-2">
                 {(['dine-in', 'takeaway'] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setOrderType(t)}
+                  <button key={t} onClick={() => setOrderType(t)}
                     className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      orderType === t
-                        ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
-                        : 'bg-white/[0.03] text-white/40 border border-white/[0.06] hover:border-white/10'
+                      orderType === t ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30' : 'bg-white/[0.03] text-white/40 border border-white/[0.06]'
                     }`}
                   >
                     {t === 'dine-in' ? '🍽️ Dine-In' : '📦 Takeaway'}
@@ -455,57 +508,27 @@ function CartPanelContent({
                 ))}
               </div>
 
-              {/* Customer */}
               <div className="grid grid-cols-2 gap-2">
-                <div className="relative">
-                  <User className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20" />
-                  <input placeholder="Name" value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="glass-input pl-7 py-2 text-xs" />
-                </div>
-                <div className="relative">
-                  <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20" />
-                  <input placeholder="Phone" value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="glass-input pl-7 py-2 text-xs" />
-                </div>
+                <input placeholder="Customer Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="glass-input px-3 py-2 text-xs" />
+                <input placeholder="Phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="glass-input px-3 py-2 text-xs" />
               </div>
 
-              {orderType === 'dine-in' && (
-                <div className="relative">
-                  <Hash className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20" />
-                  <input placeholder="Table Number" value={tableNumber}
-                    onChange={(e) => setTableNumber(e.target.value)}
-                    className="glass-input pl-7 py-2 text-xs" />
-                </div>
-              )}
-
-              {/* Payment */}
               <div className="flex gap-1.5">
                 {(['cash', 'upi', 'card'] as const).map((m) => (
                   <button key={m} onClick={() => setPaymentMethod(m)}
                     className={`flex-1 py-2 rounded-lg text-[11px] font-semibold transition-all ${
-                      paymentMethod === m
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-white/[0.03] text-white/40 border border-white/[0.06]'
+                      paymentMethod === m ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/[0.03] text-white/40 border border-white/[0.06]'
                     }`}
                   >
-                    {m === 'cash' ? '💵' : m === 'upi' ? '📱' : '💳'} {m.toUpperCase()}
+                    {m.toUpperCase()}
                   </button>
                 ))}
               </div>
 
-              {/* Discount — Owner only */}
               {userRole === 'owner' && (
                 <div className="flex gap-2 items-center">
                   <Percent className="w-3.5 h-3.5 text-white/30 shrink-0" />
-                  <select value={discountType}
-                    onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'fixed')}
-                    className="glass-input py-2 text-xs w-20 shrink-0">
-                    <option value="percentage">%</option>
-                    <option value="fixed">₹</option>
-                  </select>
-                  <input type="number" placeholder="0" value={discountValue || ''}
+                  <input type="number" placeholder="Discount" value={discountValue || ''}
                     onChange={(e) => setDiscountValue(Number(e.target.value))}
                     className="glass-input py-2 text-xs flex-1" min={0} />
                 </div>
@@ -536,19 +559,13 @@ function CartPanelContent({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => onFinalize(true, false)}
-              className="btn-primary py-3 text-xs">
-              <Printer className="w-4 h-4" /> Print Bill
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => onFinalize(true, false)} className="btn-primary py-3 text-xs">
+              <Printer className="w-4 h-4" /> Print
             </motion.button>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => onFinalize(false, true)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 px-4 py-3 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/30 transition-all">
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => onFinalize(false, true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 px-4 py-3 text-xs font-semibold text-emerald-400">
               <MessageCircle className="w-4 h-4" /> WhatsApp
             </motion.button>
           </div>
-          <motion.button whileTap={{ scale: 0.97 }} onClick={() => onFinalize(false, false)}
-            className="btn-ghost w-full py-2.5 text-xs">
-            <FileText className="w-4 h-4" /> Save & Download PDF
-          </motion.button>
         </div>
       )}
     </div>

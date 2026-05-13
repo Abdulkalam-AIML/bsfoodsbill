@@ -7,7 +7,8 @@ import {
   Percent, TrendingUp, Clock, AlertTriangle, CheckCircle2
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import { downloadDailyReport, downloadCSV } from '@/lib/reports';
+import { downloadReportPDF } from '@/lib/pdf';
+import { downloadCSV } from '@/lib/reports';
 import { clearTodayData } from '@/lib/storage';
 import { toast } from 'sonner';
 
@@ -28,7 +29,7 @@ export default function ReportsView() {
       toast.error('No data to generate report');
       return;
     }
-    downloadDailyReport(report, settings);
+    downloadReportPDF(report, settings);
     toast.success('Daily Report PDF downloaded!');
   };
 
@@ -47,7 +48,7 @@ export default function ReportsView() {
       return;
     }
     if (!window.confirm('Download report first! This will clear ALL today\'s data. Continue?')) return;
-    downloadDailyReport(report, settings);
+    downloadReportPDF(report, settings);
     clearTodayData();
     loadBills();
     generateReport();

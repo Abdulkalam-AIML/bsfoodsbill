@@ -1,15 +1,13 @@
 // ============================================
-// BS FOODS - PDF Receipt Generator
-// Uses jsPDF for thermal & A4 receipts
+// BS FOODS - Premium PDF System
+// High-fidelity thermal receipts & advanced reports
 // ============================================
 
 import jsPDF from 'jspdf';
-import type { Bill, CafeSettings } from '@/types';
+import type { Bill, CafeSettings, DailyReport } from '@/types';
 import { DEFAULT_SETTINGS } from '@/types';
 
-function formatCurrency(amount: number, currency = '₹'): string {
-  return `${currency}${amount.toFixed(2)}`;
-}
+const CURRENCY = '₹';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -29,293 +27,287 @@ function formatTime(iso: string): string {
   });
 }
 
-// ---- Thermal Receipt (80mm width) ----
+// ---- Premium Thermal Receipt (80mm) ----
 export function generateThermalReceipt(bill: Bill, settings?: CafeSettings): jsPDF {
   const s = settings || DEFAULT_SETTINGS;
   const pageWidth = 80;
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: [pageWidth, 200],
+    format: [pageWidth, 220],
   });
 
-  let y = 8;
-  const leftMargin = 4;
-  const rightMargin = pageWidth - 4;
+  let y = 10;
+  const margin = 5;
+  const innerWidth = pageWidth - (margin * 2);
   const centerX = pageWidth / 2;
 
-  // Header
-  doc.setFontSize(14);
+  // Header / Logo
   doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
   doc.text(s.cafeName, centerX, y, { align: 'center' });
+  y += 6;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(s.tagline, centerX, y, { align: 'center' });
   y += 5;
 
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text(s.tagline, centerX, y, { align: 'center' });
-  y += 4;
-
   if (s.address) {
-    doc.text(s.address, centerX, y, { align: 'center' });
-    y += 3;
-  }
-  if (s.phone) {
-    doc.text(`Ph: ${s.phone}`, centerX, y, { align: 'center' });
-    y += 3;
+    doc.setFontSize(7);
+    doc.text(s.address, centerX, y, { align: 'center', maxWidth: innerWidth });
+    y += (s.address.length > 40 ? 8 : 4);
   }
 
   // Divider
-  y += 1;
-  doc.setLineWidth(0.3);
-  doc.setDrawColor(150);
-  doc.line(leftMargin, y, rightMargin, y);
-  y += 4;
+  doc.setLineWidth(0.1);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 5;
 
-  // Bill info
-  doc.setFontSize(8);
+  // Bill Info
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Bill #${bill.billNumber}`, leftMargin, y);
-  doc.text(bill.orderType.toUpperCase(), rightMargin, y, { align: 'right' });
-  y += 4;
+  doc.text(`BILL #${bill.billNumber}`, margin, y);
+  doc.text(bill.orderType.toUpperCase(), pageWidth - margin, y, { align: 'right' });
+  y += 5;
 
   doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatDate(bill.createdAt)}`, leftMargin, y);
-  doc.text(`Time: ${formatTime(bill.createdAt)}`, rightMargin, y, { align: 'right' });
+  doc.setFontSize(8);
+  doc.text(`Date: ${formatDate(bill.createdAt)}`, margin, y);
+  doc.text(`Time: ${formatTime(bill.createdAt)}`, pageWidth - margin, y, { align: 'right' });
   y += 4;
 
+  if (bill.tableNumber) {
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Table: ${bill.tableNumber}`, margin, y);
+    y += 4;
+  }
   if (bill.customerName) {
-    doc.text(`Customer: ${bill.customerName}`, leftMargin, y);
-    y += 3.5;
-  }
-  if (bill.customerPhone) {
-    doc.text(`Phone: ${bill.customerPhone}`, leftMargin, y);
-    y += 3.5;
-  }
-  if (bill.tableNumber && bill.orderType === 'dine-in') {
-    doc.text(`Table: ${bill.tableNumber}`, leftMargin, y);
-    y += 3.5;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Customer: ${bill.customerName}`, margin, y);
+    y += 4;
   }
 
-  // Divider
-  y += 1;
-  doc.line(leftMargin, y, rightMargin, y);
+  // Table Header
+  y += 2;
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageWidth - margin, y);
   y += 4;
-
-  // Column headers
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.text('Item', leftMargin, y);
-  doc.text('Qty', 48, y, { align: 'center' });
-  doc.text('Price', 60, y, { align: 'center' });
-  doc.text('Total', rightMargin, y, { align: 'right' });
+  doc.text('Item', margin, y);
+  doc.text('Qty', 45, y, { align: 'center' });
+  doc.text('Price', 58, y, { align: 'center' });
+  doc.text('Total', pageWidth - margin, y, { align: 'right' });
   y += 3;
-  doc.line(leftMargin, y, rightMargin, y);
-  y += 4;
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 5;
 
   // Items
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
   bill.items.forEach((item) => {
     const itemTotal = item.price * item.quantity;
-    const name = item.name.length > 22 ? item.name.substring(0, 22) + '…' : item.name;
-    doc.text(name, leftMargin, y);
-    doc.text(`${item.quantity}`, 48, y, { align: 'center' });
-    doc.text(formatCurrency(item.price, s.currency), 60, y, { align: 'center' });
-    doc.text(formatCurrency(itemTotal, s.currency), rightMargin, y, { align: 'right' });
-    y += 4;
+    const name = item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name;
+    doc.text(name, margin, y);
+    doc.text(item.quantity.toString(), 45, y, { align: 'center' });
+    doc.text(item.price.toFixed(0), 58, y, { align: 'center' });
+    doc.text(itemTotal.toFixed(0), pageWidth - margin, y, { align: 'right' });
+    y += 5;
   });
 
-  // Divider
-  doc.line(leftMargin, y, rightMargin, y);
-  y += 4;
-
-  // Subtotal
-  doc.setFontSize(8);
-  doc.text('Subtotal:', leftMargin, y);
-  doc.text(formatCurrency(bill.subtotal, s.currency), rightMargin, y, { align: 'right' });
-  y += 4;
-
-  // Discount
-  if (bill.discount > 0) {
-    doc.text('Discount:', leftMargin, y);
-    doc.text(`-${formatCurrency(bill.discount, s.currency)}`, rightMargin, y, {
-      align: 'right',
-    });
-    y += 4;
-  }
-
-  // Total
-  doc.line(leftMargin, y, rightMargin, y);
-  y += 4;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text('TOTAL:', leftMargin, y);
-  doc.text(formatCurrency(bill.total, s.currency), rightMargin, y, { align: 'right' });
-  y += 4;
-  doc.line(leftMargin, y, rightMargin, y);
+  // Totals Section
+  y += 2;
+  doc.setLineWidth(0.1);
+  doc.line(margin, y, pageWidth - margin, y);
   y += 5;
 
-  // Payment method
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Payment: ${bill.paymentMethod.toUpperCase()}`, centerX, y, { align: 'center' });
+  doc.setFontSize(9);
+  doc.text('Subtotal:', margin, y);
+  doc.text(`${CURRENCY}${bill.subtotal.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
+  y += 5;
+
+  if (bill.discount > 0) {
+    doc.text('Discount:', margin, y);
+    doc.text(`-${CURRENCY}${bill.discount.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
+    y += 5;
+  }
+
+  y += 1;
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, pageWidth - margin, y);
   y += 6;
 
-  // Footer
-  doc.setFontSize(8);
-  doc.text(s.receiptFooter, centerX, y, { align: 'center', maxWidth: pageWidth - 10 });
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('GRAND TOTAL:', margin, y);
+  doc.text(`${CURRENCY}${bill.total.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
+  y += 6;
+  doc.line(margin, y, pageWidth - margin, y);
   y += 8;
 
-  doc.setFontSize(6);
-  doc.setTextColor(130);
+  // Payment
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Payment Mode: ${bill.paymentMethod.toUpperCase()}`, centerX, y, { align: 'center' });
+  y += 10;
+
+  // Footer
+  doc.setFontSize(9);
+  doc.text('Thank You for Visiting!', centerX, y, { align: 'center' });
+  y += 5;
+  doc.setFontSize(8);
+  doc.text('Please Visit Again!', centerX, y, { align: 'center' });
+  y += 8;
+
+  doc.setFontSize(7);
+  doc.setTextColor(100);
   doc.text(`Powered by ${s.developerName}`, centerX, y, { align: 'center' });
 
   return doc;
 }
 
-// ---- A4 Invoice ----
-export function generateA4Invoice(bill: Bill, settings?: CafeSettings): jsPDF {
+// ---- Advanced Daily Report PDF ----
+export function generateDailyReportPDF(report: DailyReport, settings?: CafeSettings): jsPDF {
   const s = settings || DEFAULT_SETTINGS;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = 210;
-  const leftMargin = 20;
-  const rightMargin = pageWidth - 20;
-  let y = 25;
+  const margin = 20;
+  let y = 20;
 
   // Header
-  doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
+  doc.setFontSize(24);
   doc.setTextColor(10, 14, 39);
-  doc.text(s.cafeName, pageWidth / 2, y, { align: 'center' });
+  doc.text(s.cafeName, 105, y, { align: 'center' });
+  y += 10;
+
+  doc.setFontSize(16);
+  doc.setTextColor(100);
+  doc.text('DAILY SALES REPORT', 105, y, { align: 'center' });
   y += 8;
 
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100);
-  doc.text(s.tagline, pageWidth / 2, y, { align: 'center' });
-  y += 12;
+  doc.text(`Date: ${formatDate(report.date)}`, 105, y, { align: 'center' });
+  y += 15;
 
-  // Bill details box
-  doc.setDrawColor(0, 212, 255);
-  doc.setLineWidth(0.5);
-  doc.roundedRect(leftMargin, y, rightMargin - leftMargin, 28, 3, 3);
+  // Summary Cards (Row 1)
+  const cardWidth = 40;
+  const cardGap = 10;
+  let currentX = margin;
 
-  doc.setFontSize(9);
-  doc.setTextColor(60);
+  const cards = [
+    { label: 'Total Bills', value: report.totalBills, color: [0, 212, 255] },
+    { label: 'Total Sales', value: `${CURRENCY}${report.totalSales.toLocaleString()}`, color: [16, 185, 129] },
+    { label: 'Total Revenue', value: `${CURRENCY}${report.totalRevenue.toLocaleString()}`, color: [245, 158, 11] },
+    { label: 'Total Discount', value: `${CURRENCY}${report.totalDiscount.toLocaleString()}`, color: [239, 68, 68] },
+  ];
+
+  cards.forEach((card) => {
+    doc.setDrawColor(230);
+    doc.setFillColor(250, 250, 250);
+    doc.roundedRect(currentX, y, cardWidth, 25, 2, 2, 'FD');
+    
+    // Color bar
+    const [r, g, b] = card.color;
+    doc.setFillColor(r, g, b);
+    doc.rect(currentX, y, 2, 25, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(card.label.toUpperCase(), currentX + 5, y + 8);
+    
+    doc.setFontSize(12);
+    doc.setTextColor(20);
+    doc.text(card.value.toString(), currentX + 5, y + 18);
+
+    currentX += cardWidth + cardGap;
+  });
+
+  y += 35;
+
+  // Item Sales Table
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text(`INVOICE #BSF-${bill.billNumber}`, leftMargin + 5, y + 7);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatDate(bill.createdAt)}`, leftMargin + 5, y + 13);
-  doc.text(`Time: ${formatTime(bill.createdAt)}`, leftMargin + 5, y + 19);
-  doc.text(`Type: ${bill.orderType.toUpperCase()}`, leftMargin + 5, y + 25);
+  doc.setTextColor(10, 14, 39);
+  doc.text('ITEM-WISE SALES', margin, y);
+  y += 8;
 
-  if (bill.customerName) {
-    doc.text(`Customer: ${bill.customerName}`, rightMargin - 70, y + 7);
-  }
-  if (bill.customerPhone) {
-    doc.text(`Phone: ${bill.customerPhone}`, rightMargin - 70, y + 13);
-  }
-  if (bill.tableNumber) {
-    doc.text(`Table: ${bill.tableNumber}`, rightMargin - 70, y + 19);
-  }
-  doc.text(`Payment: ${bill.paymentMethod.toUpperCase()}`, rightMargin - 70, y + 25);
-
-  y += 36;
-
-  // Table header
   doc.setFillColor(10, 14, 39);
-  doc.roundedRect(leftMargin, y, rightMargin - leftMargin, 8, 1, 1, 'F');
+  doc.rect(margin, y, 170, 8, 'F');
   doc.setTextColor(255);
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('S.No', leftMargin + 5, y + 5.5);
-  doc.text('Item Name', leftMargin + 20, y + 5.5);
-  doc.text('Qty', 120, y + 5.5, { align: 'center' });
-  doc.text('Price', 145, y + 5.5, { align: 'center' });
-  doc.text('Amount', rightMargin - 5, y + 5.5, { align: 'right' });
+  doc.text('ITEM NAME', margin + 5, y + 5.5);
+  doc.text('QUANTITY SOLD', 100, y + 5.5, { align: 'center' });
+  doc.text('REVENUE', 180, y + 5.5, { align: 'right' });
   y += 12;
 
-  // Table rows
   doc.setTextColor(40);
   doc.setFont('helvetica', 'normal');
-  bill.items.forEach((item, idx) => {
-    const itemTotal = item.price * item.quantity;
+  Object.entries(report.itemsSold).sort((a, b) => b[1] - a[1]).forEach(([name, qty], idx) => {
     if (idx % 2 === 0) {
       doc.setFillColor(245, 247, 250);
-      doc.rect(leftMargin, y - 4, rightMargin - leftMargin, 8, 'F');
+      doc.rect(margin, y - 4, 170, 8, 'F');
     }
-    doc.text(`${idx + 1}`, leftMargin + 5, y);
-    doc.text(item.name, leftMargin + 20, y);
-    doc.text(`${item.quantity}`, 120, y, { align: 'center' });
-    doc.text(formatCurrency(item.price, s.currency), 145, y, { align: 'center' });
-    doc.text(formatCurrency(itemTotal, s.currency), rightMargin - 5, y, { align: 'right' });
+    doc.text(name, margin + 5, y);
+    doc.text(qty.toString(), 100, y, { align: 'center' });
+    // Assuming revenue is handled elsewhere or just show qty
+    // For now we just have qty in the report object
     y += 8;
   });
 
-  y += 4;
-  doc.setDrawColor(200);
-  doc.line(120, y, rightMargin, y);
-  y += 8;
+  y += 15;
 
-  // Totals
-  doc.setFontSize(10);
-  doc.text('Subtotal:', 130, y);
-  doc.text(formatCurrency(bill.subtotal, s.currency), rightMargin - 5, y, { align: 'right' });
-  y += 7;
-
-  if (bill.discount > 0) {
-    doc.setTextColor(220, 50, 50);
-    doc.text('Discount:', 130, y);
-    doc.text(`-${formatCurrency(bill.discount, s.currency)}`, rightMargin - 5, y, {
-      align: 'right',
-    });
-    y += 7;
-    doc.setTextColor(40);
-  }
-
-  doc.setDrawColor(0, 212, 255);
-  doc.setLineWidth(0.8);
-  doc.line(120, y, rightMargin, y);
-  y += 8;
-
-  doc.setFont('helvetica', 'bold');
+  // Analytics Section
   doc.setFontSize(14);
-  doc.text('TOTAL:', 130, y);
-  doc.text(formatCurrency(bill.total, s.currency), rightMargin - 5, y, { align: 'right' });
-  y += 20;
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(10, 14, 39);
+  doc.text('PERFORMANCE ANALYTICS', margin, y);
+  y += 8;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Peak Sales Hour: ${report.peakHour}`, margin, y);
+  y += 6;
+  doc.text(`WhatsApp Bills Sent: ${report.whatsappCount}`, margin, y);
+  y += 6;
+  doc.text(`Physical Bills Printed: ${report.printCount}`, margin, y);
+  y += 15;
+
+  // Payment Methods
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('PAYMENT METHODS', margin, y);
+  y += 8;
+
+  Object.entries(report.paymentMethods).forEach(([method, count]) => {
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${method.toUpperCase()}:`, margin, y);
+    doc.text(count.toString(), 60, y);
+    y += 6;
+  });
 
   // Footer
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  doc.text(s.receiptFooter, pageWidth / 2, y, { align: 'center' });
-  y += 12;
-
   doc.setFontSize(8);
   doc.setTextColor(150);
-  doc.text(`Powered by ${s.developerName}`, pageWidth / 2, y, { align: 'center' });
+  doc.text(`Generated by BS FOODS Smart Billing | Powered by ${s.developerName}`, 105, 285, { align: 'center' });
 
   return doc;
 }
 
-// ---- Download helpers ----
-export function downloadReceipt(bill: Bill, settings?: CafeSettings): void {
+// ---- Export Helpers ----
+export function downloadThermalReceipt(bill: Bill, settings?: CafeSettings): void {
   const doc = generateThermalReceipt(bill, settings);
-  doc.save(`BS-Foods-Bill-${bill.billNumber}.pdf`);
+  doc.save(`BS-Bill-${bill.billNumber}.pdf`);
 }
 
-export function downloadInvoice(bill: Bill, settings?: CafeSettings): void {
-  const doc = generateA4Invoice(bill, settings);
-  doc.save(`BS-Foods-Invoice-${bill.billNumber}.pdf`);
+export function downloadReportPDF(report: DailyReport, settings?: CafeSettings): void {
+  const doc = generateDailyReportPDF(report, settings);
+  doc.save(`BS-Daily-Report-${report.date}.pdf`);
 }
 
-export function printReceipt(bill: Bill, settings?: CafeSettings): void {
+export function printBill(bill: Bill, settings?: CafeSettings): void {
   const doc = generateThermalReceipt(bill, settings);
   const blobUrl = doc.output('bloburl');
-  const printWindow = window.open(blobUrl as unknown as string);
-  if (printWindow) {
-    printWindow.addEventListener('load', () => {
-      printWindow.print();
-    });
-  }
+  window.open(blobUrl as unknown as string);
 }

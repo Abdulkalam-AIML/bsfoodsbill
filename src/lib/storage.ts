@@ -11,6 +11,7 @@ const KEYS = {
   BILL_COUNTER: 'bsfoods_bill_counter',
   LAST_CLEANUP: 'bsfoods_last_cleanup',
   AUTH: 'bsfoods_auth',
+  HELD_TABLES: 'bsfoods_held_tables',
 } as const;
 
 function getToday(): string {
@@ -111,6 +112,15 @@ export function getSettings(): import('@/types').CafeSettings {
 
 export function saveSettings(settings: import('@/types').CafeSettings): void {
   setItem(KEYS.SETTINGS, settings);
+}
+
+// ---- Tables ----
+export function getHeldTables(): import('@/types').TableState[] {
+  return getItem(KEYS.HELD_TABLES, []);
+}
+
+export function saveHeldTables(tables: import('@/types').TableState[]): void {
+  setItem(KEYS.HELD_TABLES, tables);
 }
 
 // ---- Auth ----

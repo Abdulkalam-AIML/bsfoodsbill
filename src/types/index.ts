@@ -76,6 +76,19 @@ export type MenuCategory =
   | 'Snacks & Burgers'
   | 'Thick Shakes & Milk Shakes';
 
+export interface TableState {
+  id: string;
+  number: number;
+  items: CartItem[];
+  customerName: string;
+  customerPhone: string;
+  orderType: 'dine-in' | 'takeaway';
+  orderNotes: string;
+  status: 'available' | 'occupied';
+  startedAt?: string;
+  lastUpdated?: string;
+}
+
 export const MENU_CATEGORIES: MenuCategory[] = [
   'Mocktails',
   'Desserts & Ice Cream Scoops',

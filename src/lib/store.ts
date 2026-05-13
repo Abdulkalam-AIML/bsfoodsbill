@@ -18,7 +18,10 @@ import {
   getAuth,
   setAuth as persistAuth,
   logout as doLogout,
+  getHeldTables,
+  saveHeldTables,
 } from '@/lib/storage';
+import type { TableState } from '@/types';
 
 export interface AppState {
   // Auth
@@ -60,6 +63,14 @@ export interface AppState {
   setPaymentMethod: (method: 'cash' | 'upi' | 'card') => void;
   setDiscountType: (type: 'percentage' | 'fixed') => void;
   setDiscountValue: (value: number) => void;
+
+  // Tables
+  tables: TableState[];
+  loadTables: () => void;
+  holdTable: (number: number) => void;
+  resumeTable: (number: number) => void;
+  clearTable: (number: number) => void;
+  completeOrder: () => void;
 
   // Computed
   subtotal: () => number;
@@ -255,8 +266,88 @@ export const useStore = create<AppState>((set, get) => ({
     saveBill(bill);
     const bills = [...state.bills, bill];
     set({ bills });
-    state.clearCart();
     return bill;
+  },
+
+  // ---- Tables ----
+  tables: Array.from({ length: 6 }, (_, i) => ({
+    id: `table-${i + 1}`,
+    number: i + 1,
+    items: [],
+    customerName: '',
+    customerPhone: '',
+    orderType: 'dine-in',
+    orderNotes: '',
+    status: 'available',
+  })),
+  loadTables: () => {
+    const held = getHeldTables();
+    if (held.length > 0) {
+      set({ tables: held });
+    }
+  },
+  holdTable: (num) => {
+    const state = get();
+    const newTables = state.tables.map((t) =>
+      t.number === num
+        ? {
+            ...t,
+            items: state.cart,
+            customerName: state.customerName,
+            customerPhone: state.customerPhone,
+            orderType: state.orderType,
+            orderNotes: state.orderNotes,
+            status: 'occupied' as const,
+            lastUpdated: new Date().toISOString(),
+            startedAt: t.startedAt || new Date().toISOString(),
+          }
+        : t,
+    );
+    saveHeldTables(newTables);
+    set({ tables: newTables });
+    state.clearCart();
+  },
+  resumeTable: (num) => {
+    const state = get();
+    const table = state.tables.find((t) => t.number === num);
+    if (!table) return;
+
+    set({
+      cart: table.items,
+      customerName: table.customerName,
+      customerPhone: table.customerPhone,
+      orderType: table.orderType,
+      tableNumber: table.number.toString(),
+      orderNotes: table.orderNotes,
+      // Keep other state as is or reset
+    });
+
+    // Mark table as available while editing? No, keep occupied but we are "resuming" it.
+  },
+  clearTable: (num) => {
+    const newTables = get().tables.map((t) =>
+      t.number === num
+        ? {
+            ...t,
+            items: [],
+            customerName: '',
+            customerPhone: '',
+            status: 'available' as const,
+            startedAt: undefined,
+            lastUpdated: undefined,
+          }
+        : t,
+    );
+    saveHeldTables(newTables);
+    set({ tables: newTables });
+  },
+  completeOrder: () => {
+    const state = get();
+    const tableNum = parseInt(state.tableNumber);
+    if (!isNaN(tableNum)) {
+      state.clearTable(tableNum);
+    }
+    state.clearCart();
   },
 
   // ---- Reports ----
