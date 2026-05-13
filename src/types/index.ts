@@ -91,7 +91,7 @@ export const DEFAULT_SETTINGS: CafeSettings = {
   tagline: 'Smart Billing Experience for Modern Cafes',
   phone: '',
   address: '',
-  logoUrl: '',
+  logoUrl: '/logo.png',
   currency: '₹',
   receiptFooter: 'Thank you for visiting BS FOODS! See you again soon.',
   developerName: 'NexLayer Private Limited',
