@@ -31,10 +31,14 @@ function formatTime(iso: string): string {
 export function generateThermalReceipt(bill: Bill, settings?: CafeSettings): jsPDF {
   const s = settings || DEFAULT_SETTINGS;
   const pageWidth = 80;
+  // Dynamic height based on items
+  const itemHeight = bill.items.length * 8;
+  const pageHeight = 110 + itemHeight;
+  
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: [pageWidth, 220],
+    format: [pageWidth, pageHeight],
   });
 
   let y = 10;
@@ -44,6 +48,10 @@ export function generateThermalReceipt(bill: Bill, settings?: CafeSettings): jsP
 
   // Header / Logo
   doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.text('BS', centerX, y, { align: 'center' });
+  y += 7;
+  
   doc.setFontSize(16);
   doc.text(s.cafeName, centerX, y, { align: 'center' });
   y += 6;
@@ -51,112 +59,104 @@ export function generateThermalReceipt(bill: Bill, settings?: CafeSettings): jsP
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.text(s.tagline, centerX, y, { align: 'center' });
-  y += 5;
+  y += 8;
 
-  if (s.address) {
-    doc.setFontSize(7);
-    doc.text(s.address, centerX, y, { align: 'center', maxWidth: innerWidth });
-    y += (s.address.length > 40 ? 8 : 4);
-  }
-
-  // Divider
-  doc.setLineWidth(0.1);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 5;
-
-  // Bill Info
+  // Info Section
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text(`BILL #${bill.billNumber}`, margin, y);
-  doc.text(bill.orderType.toUpperCase(), pageWidth - margin, y, { align: 'right' });
+  doc.text(`Bill No: #${bill.billNumber}`, margin, y);
+  doc.text(`Table: ${bill.tableNumber || '—'}`, pageWidth - margin, y, { align: 'right' });
   y += 5;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text(`Date: ${formatDate(bill.createdAt)}`, margin, y);
-  doc.text(`Time: ${formatTime(bill.createdAt)}`, pageWidth - margin, y, { align: 'right' });
-  y += 4;
+  doc.text(`Customer: ${bill.customerName || 'Guest'}`, margin, y);
+  y += 5;
 
-  if (bill.tableNumber) {
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Table: ${bill.tableNumber}`, margin, y);
-    y += 4;
-  }
-  if (bill.customerName) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Customer: ${bill.customerName}`, margin, y);
-    y += 4;
-  }
+  const date = new Date(bill.createdAt);
+  const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  
+  doc.text(`Date: ${dateStr}`, margin, y);
+  doc.text(`Time: ${timeStr}`, pageWidth - margin, y, { align: 'right' });
+  y += 5;
+  
+  doc.text(`Type: ${bill.orderType.toUpperCase()}`, margin, y);
+  y += 5;
 
   // Table Header
   y += 2;
-  doc.setLineWidth(0.3);
+  doc.setLineWidth(0.2);
   doc.line(margin, y, pageWidth - margin, y);
   y += 4;
   doc.setFont('helvetica', 'bold');
-  doc.text('Item', margin, y);
-  doc.text('Qty', 45, y, { align: 'center' });
-  doc.text('Price', 58, y, { align: 'center' });
-  doc.text('Total', pageWidth - margin, y, { align: 'right' });
+  doc.text('ITEM', margin, y);
+  doc.text('QTY', 42, y, { align: 'center' });
+  doc.text('RATE', 58, y, { align: 'center' });
+  doc.text('TOTAL', pageWidth - margin, y, { align: 'right' });
   y += 3;
   doc.line(margin, y, pageWidth - margin, y);
-  y += 5;
+  y += 6;
 
   // Items
   doc.setFont('helvetica', 'normal');
   bill.items.forEach((item) => {
-    const itemTotal = item.price * item.quantity;
-    const name = item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name;
-    doc.text(name, margin, y);
-    doc.text(item.quantity.toString(), 45, y, { align: 'center' });
-    doc.text(item.price.toFixed(0), 58, y, { align: 'center' });
-    doc.text(itemTotal.toFixed(0), pageWidth - margin, y, { align: 'right' });
-    y += 5;
+    // If name is too long, split it
+    const nameLines = doc.splitTextToSize(item.name, 35);
+    doc.text(nameLines, margin, y);
+    
+    const qtyX = 42;
+    const rateX = 58;
+    const totalX = pageWidth - margin;
+    
+    doc.text(item.quantity.toString(), qtyX, y, { align: 'center' });
+    doc.text(item.price.toFixed(0), rateX, y, { align: 'center' });
+    doc.text((item.price * item.quantity).toFixed(0), totalX, y, { align: 'right' });
+    
+    y += (nameLines.length * 4) + 2;
   });
 
   // Totals Section
   y += 2;
-  doc.setLineWidth(0.1);
   doc.line(margin, y, pageWidth - margin, y);
-  y += 5;
+  y += 6;
 
-  doc.setFontSize(9);
+  doc.setFontSize(10);
   doc.text('Subtotal:', margin, y);
-  doc.text(`${CURRENCY}${bill.subtotal.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
-  y += 5;
+  doc.text(`Rs. ${bill.subtotal.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
+  y += 6;
 
   if (bill.discount > 0) {
     doc.text('Discount:', margin, y);
-    doc.text(`-${CURRENCY}${bill.discount.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
-    y += 5;
+    doc.text(`-Rs. ${bill.discount.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
+    y += 6;
   }
 
   y += 1;
   doc.setLineWidth(0.5);
   doc.line(margin, y, pageWidth - margin, y);
-  y += 6;
+  y += 8;
 
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('GRAND TOTAL:', margin, y);
-  doc.text(`${CURRENCY}${bill.total.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
-  y += 6;
-  doc.line(margin, y, pageWidth - margin, y);
+  doc.text('Grand Total:', margin, y);
+  doc.text(`Rs. ${bill.total.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
   y += 8;
-
-  // Payment
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Payment Mode: ${bill.paymentMethod.toUpperCase()}`, centerX, y, { align: 'center' });
+  doc.line(margin, y, pageWidth - margin, y);
   y += 10;
 
+  // Payment
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Payment: ${bill.paymentMethod.toUpperCase()}`, centerX, y, { align: 'center' });
+  y += 12;
+
   // Footer
+  doc.setFontSize(10);
+  doc.text('🙏 Thank you for visiting BS FOODS!', centerX, y, { align: 'center' });
+  y += 6;
   doc.setFontSize(9);
-  doc.text('Thank You for Visiting!', centerX, y, { align: 'center' });
-  y += 5;
-  doc.setFontSize(8);
-  doc.text('Please Visit Again!', centerX, y, { align: 'center' });
-  y += 8;
+  doc.text('Visit Again ❤️', centerX, y, { align: 'center' });
+  y += 10;
 
   doc.setFontSize(7);
   doc.setTextColor(100);

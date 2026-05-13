@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, ShoppingCart, Plus, Minus, Trash2, User, Phone,
   Hash, FileText, Printer, MessageCircle,
-  UtensilsCrossed, Percent, X, ArrowLeft, ImageOff
+  UtensilsCrossed, Percent, X, ArrowLeft, ImageOff, CheckCircle2
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { downloadThermalReceipt, printBill } from '@/lib/pdf';
@@ -183,7 +183,8 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
     discountType, setDiscountType, discountValue, setDiscountValue,
     subtotal, discountAmount, total, createBill, settings, userRole,
     searchQuery, setSearchQuery, activeCategory, setActiveCategory,
-    tables, holdTable, resumeTable, clearTable, completeOrder, loadTables
+    tables, holdTable, resumeTable, clearTable, completeOrder, loadTables,
+    billPrinted, billWhatsappSent, setBillStatus, resetBillStatus
   } = useStore();
 
   const [showCart, setShowCart] = useState(false);
@@ -228,24 +229,70 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
   const tot = total();
 
   const handleFinalize = useCallback(
-    (print: boolean, whatsapp: boolean) => {
-      if (cart.length === 0) { toast.error('Cart is empty!'); return; }
-      const bill = createBill(print, whatsapp);
-      
+    async (print: boolean, whatsapp: boolean) => {
+      if (cart.length === 0) {
+        toast.error('Cart is empty!');
+        return;
+      }
+
+      // 1. Create or get existing bill
+      let bill;
+      if (!useStore.getState().currentBillId) {
+        bill = createBill(false, false);
+        useStore.getState().setBillStatus(false, false);
+        // @ts-ignore
+        useStore.getState().currentBillId = bill.id;
+      } else {
+        const billId = useStore.getState().currentBillId;
+        bill = useStore.getState().bills.find(b => b.id === billId);
+      }
+
+      if (!bill) return;
+
+      // 2. Perform requested actions
       if (print) {
-        try { printBill(bill, settings); } catch { downloadThermalReceipt(bill, settings); }
+        try {
+          printBill(bill, settings);
+          setBillStatus(true, undefined);
+          useStore.getState().updateBillStatus(bill.id, true, undefined);
+          toast.success('Receipt sent to printer');
+        } catch {
+          downloadThermalReceipt(bill, settings);
+          setBillStatus(true, undefined);
+          useStore.getState().updateBillStatus(bill.id, true, undefined);
+          toast.success('Receipt downloaded');
+        }
       }
+
       if (whatsapp) {
-        if (bill.customerPhone) sendWhatsApp(bill.customerPhone, bill, settings);
-        else shareWhatsAppNoNumber(bill, settings);
+        if (bill.customerPhone) {
+          sendWhatsApp(bill.customerPhone, bill, settings);
+        } else {
+          shareWhatsAppNoNumber(bill, settings);
+        }
+        setBillStatus(undefined, true);
+        useStore.getState().updateBillStatus(bill.id, undefined, true);
+        toast.success('WhatsApp bill shared');
       }
-      
-      // Success logic
-      completeOrder();
-      setShowCart(false);
-      toast.success(`Bill #${bill.billNumber} complete! Cart reset. 🎉`);
+
+      // 3. Check for full completion
+      const { billPrinted, billWhatsappSent } = useStore.getState();
+      if (billPrinted && billWhatsappSent) {
+        completeOrder();
+        resetBillStatus();
+        setShowCart(false);
+        toast.success(`✅ Bill #${bill.billNumber} Completed Successfully!`, {
+          duration: 5000,
+          icon: '🎉',
+        });
+      } else {
+        const remaining = !billPrinted ? 'Print' : 'WhatsApp';
+        toast.info(`Please complete ${remaining} to finish the bill.`, {
+          icon: '⏳',
+        });
+      }
     },
-    [cart, createBill, settings, completeOrder],
+    [cart, createBill, settings, completeOrder, setBillStatus, resetBillStatus],
   );
 
   const cartPanelProps = {
@@ -559,11 +606,27 @@ function CartPanelContent({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => onFinalize(true, false)} className="btn-primary py-3 text-xs">
-              <Printer className="w-4 h-4" /> Print
+            <motion.button 
+              whileTap={{ scale: 0.95 }} 
+              onClick={() => onFinalize(true, false)} 
+              className={`btn-primary py-3 text-xs flex items-center justify-center gap-2 ${
+                useStore.getState().billPrinted ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : ''
+              }`}
+            >
+              {useStore.getState().billPrinted ? <CheckCircle2 className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
+              {useStore.getState().billPrinted ? 'Printed' : 'Print'}
             </motion.button>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => onFinalize(false, true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 px-4 py-3 text-xs font-semibold text-emerald-400">
-              <MessageCircle className="w-4 h-4" /> WhatsApp
+            <motion.button 
+              whileTap={{ scale: 0.95 }} 
+              onClick={() => onFinalize(false, true)} 
+              className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-xs font-semibold transition-all ${
+                useStore.getState().billWhatsappSent 
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
+                  : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20'
+              }`}
+            >
+              {useStore.getState().billWhatsappSent ? <CheckCircle2 className="w-4 h-4" /> : <MessageCircle className="w-4 h-4" />}
+              {useStore.getState().billWhatsappSent ? 'Sent' : 'WhatsApp'}
             </motion.button>
           </div>
         </div>

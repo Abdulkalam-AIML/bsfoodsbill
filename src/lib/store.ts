@@ -20,6 +20,7 @@ import {
   logout as doLogout,
   getHeldTables,
   saveHeldTables,
+  saveAllBills,
 } from '@/lib/storage';
 import type { TableState } from '@/types';
 
@@ -81,6 +82,7 @@ export interface AppState {
   bills: Bill[];
   loadBills: () => void;
   createBill: (printed: boolean, whatsappSent: boolean) => Bill;
+  updateBillStatus: (id: string, printed?: boolean, whatsappSent?: boolean) => void;
 
   // Reports
   report: DailyReport | null;
@@ -98,6 +100,13 @@ export interface AppState {
   setActiveCategory: (cat: string) => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+
+  // Bill Completion Flow
+  currentBillId: string | null;
+  billPrinted: boolean;
+  billWhatsappSent: boolean;
+  setBillStatus: (printed?: boolean, whatsappSent?: boolean) => void;
+  resetBillStatus: () => void;
 }
 
 // Default PIN codes
@@ -198,6 +207,9 @@ export const useStore = create<AppState>((set, get) => ({
       orderNotes: '',
       discountType: 'percentage',
       discountValue: 0,
+      currentBillId: null,
+      billPrinted: false,
+      billWhatsappSent: false,
     });
   },
 
@@ -268,6 +280,20 @@ export const useStore = create<AppState>((set, get) => ({
     set({ bills });
     return bill;
   },
+  updateBillStatus: (id, printed, whatsappSent) => {
+    const bills = get().bills.map((b) => {
+      if (b.id === id) {
+        return {
+          ...b,
+          printed: printed !== undefined ? printed : b.printed,
+          whatsappSent: whatsappSent !== undefined ? whatsappSent : b.whatsappSent,
+        };
+      }
+      return b;
+    });
+    saveAllBills(bills);
+    set({ bills });
+  },
 
   // ---- Tables ----
   tables: Array.from({ length: 6 }, (_, i) => ({
@@ -319,6 +345,9 @@ export const useStore = create<AppState>((set, get) => ({
       orderType: table.orderType,
       tableNumber: table.number.toString(),
       orderNotes: table.orderNotes,
+      currentBillId: null,
+      billPrinted: false,
+      billWhatsappSent: false,
       // Keep other state as is or reset
     });
 
@@ -376,4 +405,23 @@ export const useStore = create<AppState>((set, get) => ({
   setActiveCategory: (cat) => set({ activeCategory: cat }),
   searchQuery: '',
   setSearchQuery: (q) => set({ searchQuery: q }),
+
+  // ---- Bill Completion Flow ----
+  currentBillId: null,
+  billPrinted: false,
+  billWhatsappSent: false,
+  setBillStatus: (printed, whatsappSent) => {
+    const { billPrinted, billWhatsappSent } = get();
+    set({
+      billPrinted: printed !== undefined ? printed : billPrinted,
+      billWhatsappSent: whatsappSent !== undefined ? whatsappSent : billWhatsappSent,
+    });
+  },
+  resetBillStatus: () => {
+    set({
+      currentBillId: null,
+      billPrinted: false,
+      billWhatsappSent: false,
+    });
+  },
 }));

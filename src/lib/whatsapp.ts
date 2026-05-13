@@ -31,41 +31,45 @@ function formatTime(iso: string): string {
 export function generateBillMessage(bill: Bill, settings?: CafeSettings): string {
   const s = settings || DEFAULT_SETTINGS;
 
-  let message = `🧾 *${s.cafeName}*\n`;
-  message += `━━━━━━━━━━━━━━━━━━━━\n`;
-  message += `📋 Bill #${bill.billNumber}\n`;
-  message += `📅 ${formatDate(bill.createdAt)} | ⏰ ${formatTime(bill.createdAt)}\n`;
+  const date = new Date(bill.createdAt);
+  const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  if (bill.customerName) {
-    message += `👤 ${bill.customerName}\n`;
-  }
-  message += `🍽️ ${bill.orderType === 'dine-in' ? 'Dine-In' : 'Takeaway'}`;
-  if (bill.tableNumber) message += ` | Table ${bill.tableNumber}`;
-  message += `\n`;
+  let message = `🍽️ *${s.cafeName}*\n\n`;
+  message += `━━━━━━━━━━━━━━\n\n`;
+  message += `🧾 *Bill #${bill.billNumber}*\n`;
+  if (bill.tableNumber) message += `🪑 Table: ${bill.tableNumber}\n`;
+  message += `📅 ${dateStr}\n`;
+  message += `⏰ ${timeStr}\n`;
+  message += `🍴 ${bill.orderType.toUpperCase()}\n\n`;
+  message += `━━━━━━━━━━━━━━\n\n`;
 
-  message += `━━━━━━━━━━━━━━━━━━━━\n`;
-  message += `📝 *Order Details:*\n\n`;
-
-  bill.items.forEach((item, idx) => {
-    const total = item.price * item.quantity;
-    message += `${idx + 1}. ${item.name}\n`;
-    message += `   ${item.quantity} × ${formatCurrency(item.price, s.currency)} = ${formatCurrency(total, s.currency)}\n`;
+  bill.items.forEach((item) => {
+    message += `${getEmojiForCategory(item.category)} ${item.name}\n`;
+    message += `${item.quantity} × ₹${item.price} = ₹${item.price * item.quantity}\n\n`;
   });
 
-  message += `\n━━━━━━━━━━━━━━━━━━━━\n`;
-  message += `Subtotal: ${formatCurrency(bill.subtotal, s.currency)}\n`;
-
-  if (bill.discount > 0) {
-    message += `Discount: -${formatCurrency(bill.discount, s.currency)}\n`;
-  }
-
-  message += `*💰 TOTAL: ${formatCurrency(bill.total, s.currency)}*\n`;
-  message += `💳 Payment: ${bill.paymentMethod.toUpperCase()}\n`;
-  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-  message += `${s.receiptFooter}\n`;
-  message += `_Powered by ${s.developerName}_`;
+  message += `━━━━━━━━━━━━━━\n\n`;
+  message += `💰 Subtotal: ₹${bill.subtotal}\n`;
+  if (bill.discount > 0) message += `🎁 Discount: ₹${bill.discount}\n`;
+  message += `✅ *TOTAL: ₹${bill.total}*\n\n`;
+  message += `💳 Payment: ${bill.paymentMethod.toUpperCase()}\n\n`;
+  message += `━━━━━━━━━━━━━━\n\n`;
+  message += `🙏 Thank you for visiting BS FOODS!\n\n`;
+  message += `✨ Powered by ${s.developerName}`;
 
   return message;
+}
+
+function getEmojiForCategory(category: string): string {
+  if (category.includes('Mocktails')) return '🍹';
+  if (category.includes('Desserts')) return '🍦';
+  if (category.includes('Chai')) return '☕';
+  if (category.includes('Pizza')) return '🍕';
+  if (category.includes('Sandwich')) return '🥪';
+  if (category.includes('Snacks')) return '🍔';
+  if (category.includes('Shakes')) return '🥤';
+  return '🍴';
 }
 
 export function sendWhatsApp(phone: string, bill: Bill, settings?: CafeSettings): void {

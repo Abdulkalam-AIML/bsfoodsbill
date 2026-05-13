@@ -70,6 +70,10 @@ export function saveBill(bill: import('@/types').Bill): void {
   setItem(KEYS.BILLS, bills);
 }
 
+export function saveAllBills(bills: import('@/types').Bill[]): void {
+  setItem(KEYS.BILLS, bills);
+}
+
 export function getNextBillNumber(): number {
   const data = getItem<{ date: string; counter: number }>(KEYS.BILL_COUNTER, {
     date: '',
