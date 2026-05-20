@@ -573,11 +573,54 @@ function CartPanelContent({
               </div>
 
               {userRole === 'owner' && (
-                <div className="flex gap-2 items-center">
-                  <Percent className="w-3.5 h-3.5 text-white/30 shrink-0" />
-                  <input type="number" placeholder="Discount" value={discountValue || ''}
-                    onChange={(e) => setDiscountValue(Number(e.target.value))}
-                    className="glass-input py-2 text-xs flex-1" min={0} />
+                <div className="space-y-2">
+                  <div className="flex gap-2 items-center">
+                    <Percent className="w-3.5 h-3.5 text-white/30 shrink-0" />
+                    <input type="number" placeholder="Discount" value={discountValue || ''}
+                      onChange={(e) => setDiscountValue(Number(e.target.value))}
+                      className="glass-input py-2 text-xs flex-1" min={0} />
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiscountType('fixed');
+                        setDiscountValue(99);
+                      }}
+                      className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold transition-all border ${
+                        discountType === 'fixed' && discountValue === 99
+                          ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                          : 'bg-white/[0.03] text-white/40 border-white/[0.06] hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      🎁 ₹99 Offer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiscountType('fixed');
+                        setDiscountValue(150);
+                      }}
+                      className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold transition-all border ${
+                        discountType === 'fixed' && discountValue === 150
+                          ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                          : 'bg-white/[0.03] text-white/40 border-white/[0.06] hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      🎁 ₹150 Offer
+                    </button>
+                    {(discountValue === 99 || discountValue === 150) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDiscountValue(0);
+                        }}
+                        className="py-1.5 px-2 rounded-lg text-[10px] font-semibold transition-all border bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

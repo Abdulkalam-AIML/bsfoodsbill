@@ -27,140 +27,202 @@ function formatTime(iso: string): string {
   });
 }
 
+// ---- Helper functions for Monospace Receipt ----
+function centerText(text: string, width = 32): string {
+  const cleanText = text.replace(/[\u200B-\u200D\uFEFF]/g, ''); // strip zero-width chars
+  if (cleanText.length >= width) return cleanText.substring(0, width);
+  const totalSpaces = width - cleanText.length;
+  const leftSpaces = Math.floor(totalSpaces / 2);
+  const rightSpaces = totalSpaces - leftSpaces;
+  return ' '.repeat(leftSpaces) + cleanText + ' '.repeat(rightSpaces);
+}
+
+function formatRow(left: string, right: string, width = 32): string {
+  const cleanLeft = left.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  const cleanRight = right.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  const spaces = width - cleanLeft.length - cleanRight.length;
+  if (spaces <= 0) return cleanLeft + ' ' + cleanRight;
+  return cleanLeft + ' '.repeat(spaces) + cleanRight;
+}
+
+function formatItemRows(name: string, qty: string, amount: string, width = 32): string[] {
+  const cleanName = name.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  const cleanQty = qty.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  const cleanAmount = amount.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  
+  const maxNameLen = 17;
+  const rows: string[] = [];
+  
+  // Split name into words and wrap
+  const words = cleanName.split(' ');
+  let currentLine = '';
+  const nameLines: string[] = [];
+  
+  words.forEach(word => {
+    if (currentLine === '') {
+      currentLine = word;
+    } else if ((currentLine + ' ' + word).length <= maxNameLen) {
+      currentLine += ' ' + word;
+    } else {
+      nameLines.push(currentLine);
+      currentLine = word;
+    }
+  });
+  if (currentLine) {
+    nameLines.push(currentLine);
+  }
+  
+  if (nameLines.length === 0) {
+    nameLines.push('');
+  }
+  
+  // Format the first line with QTY and AMOUNT
+  rows.push(
+    nameLines[0].padEnd(18, ' ') + 
+    cleanQty.padStart(4, ' ') + 
+    cleanAmount.padStart(10, ' ')
+  );
+  
+  // Format subsequent lines (just the item name, padded to 32)
+  for (let i = 1; i < nameLines.length; i++) {
+    rows.push(nameLines[i].padEnd(32, ' '));
+  }
+  
+  return rows;
+}
+
+function wrapText(text: string, width = 32): string[] {
+  const cleanText = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  const words = cleanText.split(' ');
+  const lines: string[] = [];
+  let current = '';
+  words.forEach(w => {
+    if ((current + ' ' + w).trim().length <= width) {
+      current = (current + ' ' + w).trim();
+    } else {
+      if (current) lines.push(current);
+      current = w;
+    }
+  });
+  if (current) lines.push(current);
+  return lines;
+}
+
+function drawHeart(doc: jsPDF, x: number, y: number, size = 3) {
+  doc.setFillColor(239, 68, 68);
+  doc.setDrawColor(239, 68, 68);
+  const r = size / 4;
+  doc.ellipse(x - r, y - r, r, r, 'F');
+  doc.ellipse(x + r, y - r, r, r, 'F');
+  doc.triangle(
+    x - 2 * r, y - r / 2,
+    x + 2 * r, y - r / 2,
+    x, y + size / 2,
+    'F'
+  );
+}
+
 // ---- Premium Thermal Receipt (80mm) ----
 export function generateThermalReceipt(bill: Bill, settings?: CafeSettings): jsPDF {
   const s = settings || DEFAULT_SETTINGS;
   const pageWidth = 80;
-  // Dynamic height based on items
-  const itemHeight = bill.items.length * 8;
-  const pageHeight = 110 + itemHeight;
   
+  // Generate all text lines first to determine page height
+  const lines: string[] = [];
+  
+  lines.push('================================');
+  lines.push(centerText(s.cafeName, 32));
+  
+  const taglineLines = wrapText(s.tagline, 32);
+  taglineLines.forEach(tl => {
+    lines.push(centerText(tl, 32));
+  });
+  lines.push('================================');
+  lines.push('');
+  lines.push(formatRow(`Bill No: #${bill.billNumber}`, `Table: ${bill.tableNumber || '1'}`, 32));
+  lines.push('');
+  
+  const date = new Date(bill.createdAt);
+  const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  lines.push(formatRow(`Date: ${dateStr}`, `Time: ${timeStr}`, 32));
+  lines.push('');
+  lines.push('--------------------------------');
+  lines.push(formatItemRows('ITEM', 'QTY', 'AMOUNT', 32)[0]);
+  lines.push('--------------------------------');
+  lines.push('');
+  
+  bill.items.forEach(item => {
+    const amtStr = `Rs. ${item.price * item.quantity}`;
+    const itemRows = formatItemRows(item.name, item.quantity.toString(), amtStr, 32);
+    itemRows.forEach(r => lines.push(r));
+  });
+  
+  lines.push('');
+  lines.push('--------------------------------');
+  lines.push('');
+  lines.push(formatRow('Subtotal', `Rs. ${bill.subtotal}`, 32));
+  lines.push(formatRow('Discount', `Rs. ${bill.discount}`, 32));
+  lines.push('');
+  lines.push('================================');
+  lines.push(formatRow('TOTAL', `Rs. ${bill.total}`, 32));
+  lines.push('================================');
+  lines.push('');
+  lines.push(`Payment: ${bill.paymentMethod.toUpperCase()}`);
+  lines.push('');
+  lines.push('--------------------------------');
+  lines.push('');
+  lines.push(centerText('Thank You For Visiting', 32));
+  lines.push(centerText(s.cafeName, 32));
+  lines.push('');
+  lines.push(centerText('Powered By', 32));
+  lines.push(centerText('NexLayer Private Limited', 32));
+  lines.push('');
+  lines.push(centerText('Visit Again', 32));
+  lines.push('');
+  lines.push('================================');
+
+  const lineCount = lines.length;
+  const lineSpacing = 4.5; // mm per line
+  const margin = 5; // mm left margin
+  const topBottomMargin = 10; // mm top and bottom margins
+  const pageHeight = (lineCount * lineSpacing) + topBottomMargin;
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: [pageWidth, pageHeight],
   });
 
+  // Set Courier Font
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(10);
+  
   let y = 10;
-  const margin = 5;
-  const innerWidth = pageWidth - (margin * 2);
-  const centerX = pageWidth / 2;
-
-  // Header / Logo
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
-  doc.text('BS', centerX, y, { align: 'center' });
-  y += 7;
-  
-  doc.setFontSize(16);
-  doc.text(s.cafeName, centerX, y, { align: 'center' });
-  y += 6;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text(s.tagline, centerX, y, { align: 'center' });
-  y += 8;
-
-  // Info Section
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Bill No: #${bill.billNumber}`, margin, y);
-  doc.text(`Table: ${bill.tableNumber || '—'}`, pageWidth - margin, y, { align: 'right' });
-  y += 5;
-
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Customer: ${bill.customerName || 'Guest'}`, margin, y);
-  y += 5;
-
-  const date = new Date(bill.createdAt);
-  const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-  
-  doc.text(`Date: ${dateStr}`, margin, y);
-  doc.text(`Time: ${timeStr}`, pageWidth - margin, y, { align: 'right' });
-  y += 5;
-  
-  doc.text(`Type: ${bill.orderType.toUpperCase()}`, margin, y);
-  y += 5;
-
-  // Table Header
-  y += 2;
-  doc.setLineWidth(0.2);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 4;
-  doc.setFont('helvetica', 'bold');
-  doc.text('ITEM', margin, y);
-  doc.text('QTY', 42, y, { align: 'center' });
-  doc.text('RATE', 58, y, { align: 'center' });
-  doc.text('TOTAL', pageWidth - margin, y, { align: 'right' });
-  y += 3;
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 6;
-
-  // Items
-  doc.setFont('helvetica', 'normal');
-  bill.items.forEach((item) => {
-    // If name is too long, split it
-    const nameLines = doc.splitTextToSize(item.name, 35);
-    doc.text(nameLines, margin, y);
+  lines.forEach(line => {
+    // Check if it's the TOTAL row or headers to style in bold
+    const isBold = line.includes('TOTAL   ') || line.includes('================================') || line.includes('--------------------------------') || line.includes(s.cafeName.substring(0, 10));
     
-    const qtyX = 42;
-    const rateX = 58;
-    const totalX = pageWidth - margin;
+    if (isBold) {
+      doc.setFont('courier', 'bold');
+    } else {
+      doc.setFont('courier', 'normal');
+    }
     
-    doc.text(item.quantity.toString(), qtyX, y, { align: 'center' });
-    doc.text(item.price.toFixed(0), rateX, y, { align: 'center' });
-    doc.text((item.price * item.quantity).toFixed(0), totalX, y, { align: 'right' });
+    doc.text(line, margin, y);
     
-    y += (nameLines.length * 4) + 2;
+    // Draw heart icon if this is the "Visit Again" line
+    if (line.includes('Visit Again')) {
+      // "Visit Again" is 11 chars. Centered in 32 chars: starts at index 10.
+      // 10 chars offset = 10 * 2.116 mm = 21.16 mm.
+      // Text starts at margin + 21.16 mm = 26.16 mm.
+      // Text ends at 26.16 + (11 * 2.116) = 49.43 mm.
+      // Place red heart at x = 52.5 mm, y = y - 1.2 mm
+      drawHeart(doc, 52.5, y - 1.2, 3);
+    }
+    
+    y += lineSpacing;
   });
-
-  // Totals Section
-  y += 2;
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 6;
-
-  doc.setFontSize(10);
-  doc.text('Subtotal:', margin, y);
-  doc.text(`Rs. ${bill.subtotal.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
-  y += 6;
-
-  if (bill.discount > 0) {
-    doc.text('Discount:', margin, y);
-    doc.text(`-Rs. ${bill.discount.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
-    y += 6;
-  }
-
-  y += 1;
-  doc.setLineWidth(0.5);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 8;
-
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Grand Total:', margin, y);
-  doc.text(`Rs. ${bill.total.toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
-  y += 8;
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 10;
-
-  // Payment
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Payment: ${bill.paymentMethod.toUpperCase()}`, centerX, y, { align: 'center' });
-  y += 12;
-
-  // Footer
-  doc.setFontSize(10);
-  doc.text('🙏 Thank you for visiting BS FOODS!', centerX, y, { align: 'center' });
-  y += 6;
-  doc.setFontSize(9);
-  doc.text('Visit Again ❤️', centerX, y, { align: 'center' });
-  y += 10;
-
-  doc.setFontSize(7);
-  doc.setTextColor(100);
-  doc.text(`Powered by ${s.developerName}`, centerX, y, { align: 'center' });
 
   return doc;
 }
@@ -251,8 +313,8 @@ export function generateDailyReportPDF(report: DailyReport, settings?: CafeSetti
     }
     doc.text(name, margin + 5, y);
     doc.text(qty.toString(), 100, y, { align: 'center' });
-    // Assuming revenue is handled elsewhere or just show qty
-    // For now we just have qty in the report object
+    const revenue = report.itemsRevenue?.[name] || 0;
+    doc.text(`${s.currency}${revenue.toLocaleString('en-IN')}`, 180, y, { align: 'right' });
     y += 8;
   });
 

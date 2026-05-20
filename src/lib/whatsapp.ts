@@ -35,40 +35,56 @@ export function generateBillMessage(bill: Bill, settings?: CafeSettings): string
   const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  let message = `🍽️ *${s.cafeName}*\n\n`;
-  message += `━━━━━━━━━━━━━━\n\n`;
+  let message = `🍽️ *${s.cafeName}*\n`;
+  message += `_${s.tagline}_\n\n`;
+  message += `━━━━━━━━━━━━━━━━━━\n\n`;
   message += `🧾 *Bill #${bill.billNumber}*\n`;
   if (bill.tableNumber) message += `🪑 Table: ${bill.tableNumber}\n`;
   message += `📅 ${dateStr}\n`;
   message += `⏰ ${timeStr}\n`;
   message += `🍴 ${bill.orderType.toUpperCase()}\n\n`;
-  message += `━━━━━━━━━━━━━━\n\n`;
+  message += `━━━━━━━━━━━━━━━━━━\n\n`;
 
   bill.items.forEach((item) => {
-    message += `${getEmojiForCategory(item.category)} ${item.name}\n`;
+    message += `${getEmojiForItem(item)} *${item.name}*\n`;
     message += `${item.quantity} × ₹${item.price} = ₹${item.price * item.quantity}\n\n`;
   });
 
-  message += `━━━━━━━━━━━━━━\n\n`;
+  message += `━━━━━━━━━━━━━━━━━━\n\n`;
   message += `💰 Subtotal: ₹${bill.subtotal}\n`;
   if (bill.discount > 0) message += `🎁 Discount: ₹${bill.discount}\n`;
   message += `✅ *TOTAL: ₹${bill.total}*\n\n`;
   message += `💳 Payment: ${bill.paymentMethod.toUpperCase()}\n\n`;
-  message += `━━━━━━━━━━━━━━\n\n`;
+  message += `━━━━━━━━━━━━━━━━━━\n\n`;
   message += `🙏 Thank you for visiting BS FOODS!\n\n`;
-  message += `✨ Powered by ${s.developerName}`;
+  message += `✨ Powered by\n`;
+  message += `*NexLayer Private Limited*`;
 
   return message;
 }
 
-function getEmojiForCategory(category: string): string {
-  if (category.includes('Mocktails')) return '🍹';
-  if (category.includes('Desserts')) return '🍦';
-  if (category.includes('Chai')) return '☕';
-  if (category.includes('Pizza')) return '🍕';
-  if (category.includes('Sandwich')) return '🥪';
-  if (category.includes('Snacks')) return '🍔';
-  if (category.includes('Shakes')) return '🥤';
+function getEmojiForItem(item: import('@/types').MenuItem): string {
+  const name = item.name.toLowerCase();
+  const cat = item.category.toLowerCase();
+  
+  if (name.includes('water bottle')) return '💧';
+  if (name.includes('offer')) return '🎁';
+  if (name.includes('extra charge') || name.includes('extra')) return '➕';
+  
+  if (name.includes('blue blast')) return '🧃';
+  if (name.includes('red wine')) return '🍷';
+  
+  if (cat.includes('mocktails')) return '🍹';
+  if (cat.includes('desserts')) return '🍦';
+  if (cat.includes('chai') || cat.includes('juice')) return '🧃';
+  if (cat.includes('pizza')) return '🍕';
+  if (cat.includes('sandwich')) return '🥪';
+  if (cat.includes('snacks') || cat.includes('burger')) return '🍔';
+  if (cat.includes('shakes')) return '🥤';
+  if (cat.includes('offers')) return '🎁';
+  if (cat.includes('extras')) return '➕';
+  if (cat.includes('utility')) return '💧';
+  
   return '🍴';
 }
 

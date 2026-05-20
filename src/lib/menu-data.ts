@@ -71,4 +71,16 @@ export const DEFAULT_MENU: MenuItem[] = [
   { id:'shk-7n', name:'Nagireddygudem Wine Wonder',              category:'Thick Shakes & Milk Shakes', price:99,  image:'/menu/shakes/wine-wonder.jpg',   imageAlt:'Wine wonder shake',     description:'Wine flavoured shake — Normal',          available:true, bestSeller:false, badge:'Normal ₹99 / Thick ₹149' },
   { id:'shk-7t', name:'Nagireddygudem Wine Wonder (Thick)',      category:'Thick Shakes & Milk Shakes', price:149, image:'/menu/shakes/wine-wonder.jpg',   imageAlt:'Wine wonder thick',     description:'Wine flavoured shake — Thick',           available:true, bestSeller:false, badge:'Thick Shake' },
   { id:'shk-8',  name:'Mango Mastani (Real Fruit)',              category:'Thick Shakes & Milk Shakes', price:149, image:'/menu/shakes/mango-mastani.jpg', imageAlt:'Mango mastani',         description:'Premium mango mastani with real fruit',  available:true, bestSeller:true,  badge:'🥭 Real Fruit' },
+
+  // ─── OFFERS ───
+  { id:'off-99',  name:'Offer Price - ₹99',  category:'Offers', price:99,  image:'/menu/offers/offer-99.webp',  imageAlt:'Offer Price 99',  description:'Quick-add promotional combo offer', available:true, bestSeller:false, badge:'🎁 Special Offer' },
+  { id:'off-150', name:'Offer Price - ₹150', category:'Offers', price:150, image:'/menu/offers/offer-150.webp', imageAlt:'Offer Price 150', description:'Quick-add premium combo offer',     available:true, bestSeller:false, badge:'🎁 Promo Deal' },
+
+  // ─── EXTRAS ───
+  { id:'ext-10',  name:'Extra Charge - ₹10', category:'Extras', price:10,  image:'/menu/extras/extra.jpg',     imageAlt:'Extra 10',        description:'Additional custom charge of ₹10',  available:true, bestSeller:false, badge:'➕ Extra' },
+  { id:'ext-20',  name:'Extra Charge - ₹20', category:'Extras', price:20,  image:'/menu/extras/extra.jpg',     imageAlt:'Extra 20',        description:'Additional custom charge of ₹20',  available:true, bestSeller:false, badge:'➕ Extra' },
+  { id:'ext-30',  name:'Extra Charge - ₹30', category:'Extras', price:30,  image:'/menu/extras/extra.jpg',     imageAlt:'Extra 30',        description:'Additional custom charge of ₹30',  available:true, bestSeller:false, badge:'➕ Extra' },
+
+  // ─── UTILITY ───
+  { id:'ut-wb',   name:'Water Bottle',       category:'Utility', price:10, image:'/menu/utilities/water-bottle.webp', imageAlt:'Water Bottle', description:'Chilled packaged drinking water', available:true, bestSeller:false, badge:'💧 Utility' },
 ];

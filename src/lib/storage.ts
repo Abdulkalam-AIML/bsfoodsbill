@@ -146,6 +146,7 @@ export function generateDailyReport(): import('@/types').DailyReport {
   const bills = getTodayBills().filter((b) => b.createdAt.startsWith(today));
 
   const itemsSold: Record<string, number> = {};
+  const itemsRevenue: Record<string, number> = {};
   const hourlyData: Record<string, number> = {};
   const paymentMethods: Record<string, number> = { cash: 0, upi: 0, card: 0 };
   let totalDiscount = 0;
@@ -153,9 +154,10 @@ export function generateDailyReport(): import('@/types').DailyReport {
   let whatsappCount = 0;
 
   bills.forEach((bill) => {
-    // Items sold
+    // Items sold & revenue
     bill.items.forEach((item) => {
       itemsSold[item.name] = (itemsSold[item.name] || 0) + item.quantity;
+      itemsRevenue[item.name] = (itemsRevenue[item.name] || 0) + (item.price * item.quantity);
     });
     // Hourly
     const hour = new Date(bill.createdAt).getHours();
@@ -189,6 +191,7 @@ export function generateDailyReport(): import('@/types').DailyReport {
     totalDiscount,
     totalRevenue: totalSales,
     itemsSold,
+    itemsRevenue,
     paymentMethods,
     printCount,
     whatsappCount,

@@ -88,8 +88,8 @@ export function downloadCSV(report: DailyReport): void {
     `Total Sales,${report.totalSales}`,
     `Discount,${report.totalDiscount}`,
     `Revenue,${report.totalRevenue}`,
-    '', 'Item,Qty',
-    ...Object.entries(report.itemsSold).sort((a, b) => b[1] - a[1]).map(([n, q]) => `"${n}",${q}`),
+    '', 'Item,Qty,Revenue',
+    ...Object.entries(report.itemsSold).sort((a, b) => b[1] - a[1]).map(([n, q]) => `"${n}",${q},${report.itemsRevenue?.[n] || 0}`),
     '', 'Payment,Count',
     ...Object.entries(report.paymentMethods).map(([m, c]) => `${m},${c}`),
   ];

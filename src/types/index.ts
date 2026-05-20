@@ -48,6 +48,7 @@ export interface DailyReport {
   totalDiscount: number;
   totalRevenue: number;
   itemsSold: Record<string, number>;
+  itemsRevenue: Record<string, number>;
   paymentMethods: Record<string, number>;
   printCount: number;
   whatsappCount: number;
@@ -74,20 +75,24 @@ export type MenuCategory =
   | 'Pizza'
   | 'Sandwich & Wraps'
   | 'Snacks & Burgers'
-  | 'Thick Shakes & Milk Shakes';
+  | 'Thick Shakes & Milk Shakes'
+  | 'Offers'
+  | 'Extras'
+  | 'Utility';
 
-export interface TableState {
-  id: string;
-  number: number;
-  items: CartItem[];
-  customerName: string;
-  customerPhone: string;
-  orderType: 'dine-in' | 'takeaway';
-  orderNotes: string;
-  status: 'available' | 'occupied';
-  startedAt?: string;
-  lastUpdated?: string;
-}
+export type TableState =
+  | {
+      id: string;
+      number: number;
+      items: CartItem[];
+      customerName: string;
+      customerPhone: string;
+      orderType: 'dine-in' | 'takeaway';
+      orderNotes: string;
+      status: 'available' | 'occupied';
+      startedAt?: string;
+      lastUpdated?: string;
+    };
 
 export const MENU_CATEGORIES: MenuCategory[] = [
   'Mocktails',
@@ -97,6 +102,9 @@ export const MENU_CATEGORIES: MenuCategory[] = [
   'Sandwich & Wraps',
   'Snacks & Burgers',
   'Thick Shakes & Milk Shakes',
+  'Offers',
+  'Extras',
+  'Utility',
 ];
 
 export const DEFAULT_SETTINGS: CafeSettings = {
