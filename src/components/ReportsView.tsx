@@ -113,8 +113,12 @@ export default function ReportsView() {
               <span className="text-white font-semibold">{report?.peakHour || '—'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-white/50">Print Count</span>
-              <span className="text-white font-semibold">{report?.printCount || 0}</span>
+              <span className="text-white/50">Kitchen Tickets Printed</span>
+              <span className="text-white font-semibold">{report?.kitchenTicketsPrinted || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/50">Customer Bills Printed</span>
+              <span className="text-white font-semibold">{report?.customerBillsPrinted || 0}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-white/50">WhatsApp Sent</span>

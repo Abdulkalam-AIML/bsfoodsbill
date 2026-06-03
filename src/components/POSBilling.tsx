@@ -8,7 +8,7 @@ import {
   UtensilsCrossed, Percent, X, ArrowLeft, ImageOff, CheckCircle2
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import { downloadThermalReceipt, printBill } from '@/lib/pdf';
+import { downloadThermalReceipt, downloadKOTReceipt, printBill } from '@/lib/pdf';
 import { sendWhatsApp, shareWhatsAppNoNumber } from '@/lib/whatsapp';
 import { toast } from 'sonner';
 import type { MenuItem } from '@/types';
@@ -188,6 +188,8 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
   } = useStore();
 
   const [showCart, setShowCart] = useState(false);
+  const [printKOT, setPrintKOT] = useState(true);
+  const [printCustomer, setPrintCustomer] = useState(true);
 
   // Initialize tables on mount
   useState(() => {
@@ -251,15 +253,21 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
 
       // 2. Perform requested actions
       if (print) {
+        if (!printKOT && !printCustomer) {
+          toast.error('Please enable at least one print option!');
+          return;
+        }
         try {
-          printBill(bill, settings);
+          await printBill(bill, settings, { printKOT, printCustomer });
           setBillStatus(true, undefined);
-          useStore.getState().updateBillStatus(bill.id, true, undefined);
+          useStore.getState().updateBillStatus(bill.id, true, undefined, printKOT, printCustomer);
           toast.success('Receipt sent to printer');
-        } catch {
-          downloadThermalReceipt(bill, settings);
+        } catch (e) {
+          console.error(e);
+          if (printKOT) downloadKOTReceipt(bill, settings);
+          if (printCustomer) downloadThermalReceipt(bill, settings);
           setBillStatus(true, undefined);
-          useStore.getState().updateBillStatus(bill.id, true, undefined);
+          useStore.getState().updateBillStatus(bill.id, true, undefined, printKOT, printCustomer);
           toast.success('Receipt downloaded');
         }
       }
@@ -292,7 +300,7 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
         });
       }
     },
-    [cart, createBill, settings, completeOrder, setBillStatus, resetBillStatus],
+    [cart, createBill, settings, completeOrder, setBillStatus, resetBillStatus, printKOT, printCustomer],
   );
 
   const cartPanelProps = {
@@ -306,6 +314,8 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
     discountType, setDiscountType,
     discountValue, setDiscountValue,
     userRole, onFinalize: handleFinalize,
+    printKOT, setPrintKOT,
+    printCustomer, setPrintCustomer,
     onHold: () => {
       const num = parseInt(tableNumber);
       if (isNaN(num)) { toast.error('Please select a table first!'); return; }
@@ -482,6 +492,10 @@ interface CartPanelProps {
   setDiscountValue: (v: number) => void;
   userRole: string;
   onFinalize: (print: boolean, whatsapp: boolean) => void;
+  printKOT: boolean;
+  setPrintKOT: (v: boolean) => void;
+  printCustomer: boolean;
+  setPrintCustomer: (v: boolean) => void;
   onHold: () => void;
 }
 
@@ -492,7 +506,7 @@ function CartPanelContent({
   orderType, setOrderType, tableNumber, setTableNumber,
   paymentMethod, setPaymentMethod,
   discountType, setDiscountType, discountValue, setDiscountValue,
-  userRole, onFinalize, onHold
+  userRole, onFinalize, printKOT, setPrintKOT, printCustomer, setPrintCustomer, onHold
 }: CartPanelProps) {
   return (
     <div className="flex flex-col h-full">
@@ -646,6 +660,28 @@ function CartPanelContent({
               <span>Total</span>
               <span className="text-primary-400">{settings.currency}{tot.toLocaleString('en-IN')}</span>
             </div>
+          </div>
+
+          {/* Print Toggles */}
+          <div className="flex flex-col gap-2.5 p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl my-1.5">
+            <label className="flex items-center gap-2 text-xs text-white/70 cursor-pointer select-none">
+              <input 
+                type="checkbox" 
+                checked={printKOT} 
+                onChange={(e) => setPrintKOT(e.target.checked)} 
+                className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+              />
+              <span>Print Kitchen Ticket (KOT)</span>
+            </label>
+            <label className="flex items-center gap-2 text-xs text-white/70 cursor-pointer select-none">
+              <input 
+                type="checkbox" 
+                checked={printCustomer} 
+                onChange={(e) => setPrintCustomer(e.target.checked)} 
+                className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+              />
+              <span>Print Customer Bill</span>
+            </label>
           </div>
 
           <div className="grid grid-cols-2 gap-2">

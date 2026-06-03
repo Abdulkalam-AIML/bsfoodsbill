@@ -152,6 +152,8 @@ export function generateDailyReport(): import('@/types').DailyReport {
   let totalDiscount = 0;
   let printCount = 0;
   let whatsappCount = 0;
+  let kitchenTicketsPrinted = 0;
+  let customerBillsPrinted = 0;
 
   bills.forEach((bill) => {
     // Items sold & revenue
@@ -170,6 +172,8 @@ export function generateDailyReport(): import('@/types').DailyReport {
     // Counts
     if (bill.printed) printCount++;
     if (bill.whatsappSent) whatsappCount++;
+    if (bill.kitchenTicketPrinted) kitchenTicketsPrinted++;
+    if (bill.customerBillPrinted) customerBillsPrinted++;
   });
 
   const totalSales = bills.reduce((sum, b) => sum + b.total, 0);
@@ -197,6 +201,8 @@ export function generateDailyReport(): import('@/types').DailyReport {
     whatsappCount,
     peakHour,
     hourlyData,
+    kitchenTicketsPrinted,
+    customerBillsPrinted,
   };
 }
 

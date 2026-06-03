@@ -82,7 +82,13 @@ export interface AppState {
   bills: Bill[];
   loadBills: () => void;
   createBill: (printed: boolean, whatsappSent: boolean) => Bill;
-  updateBillStatus: (id: string, printed?: boolean, whatsappSent?: boolean) => void;
+  updateBillStatus: (
+    id: string,
+    printed?: boolean,
+    whatsappSent?: boolean,
+    kitchenTicketPrinted?: boolean,
+    customerBillPrinted?: boolean
+  ) => void;
 
   // Reports
   report: DailyReport | null;
@@ -274,19 +280,23 @@ export const useStore = create<AppState>((set, get) => ({
       createdAt: new Date().toISOString(),
       printed,
       whatsappSent,
+      kitchenTicketPrinted: false,
+      customerBillPrinted: false,
     };
     saveBill(bill);
     const bills = [...state.bills, bill];
     set({ bills });
     return bill;
   },
-  updateBillStatus: (id, printed, whatsappSent) => {
+  updateBillStatus: (id, printed, whatsappSent, kitchenTicketPrinted, customerBillPrinted) => {
     const bills = get().bills.map((b) => {
       if (b.id === id) {
         return {
           ...b,
           printed: printed !== undefined ? printed : b.printed,
           whatsappSent: whatsappSent !== undefined ? whatsappSent : b.whatsappSent,
+          kitchenTicketPrinted: kitchenTicketPrinted !== undefined ? kitchenTicketPrinted : b.kitchenTicketPrinted,
+          customerBillPrinted: customerBillPrinted !== undefined ? customerBillPrinted : b.customerBillPrinted,
         };
       }
       return b;

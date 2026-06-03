@@ -48,7 +48,7 @@ export function generateReportPDF(report: DailyReport, settings?: CafeSettings):
   y += 30;
 
   doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(60);
-  doc.text(`Prints: ${report.printCount} | WhatsApp: ${report.whatsappCount}${report.peakHour ? ` | Peak: ${report.peakHour}` : ''}`, lm, y);
+  doc.text(`Kitchen Tickets: ${report.kitchenTicketsPrinted || 0} | Customer Bills: ${report.customerBillsPrinted || 0} | WhatsApp: ${report.whatsappCount}${report.peakHour ? ` | Peak: ${report.peakHour}` : ''}`, lm, y);
   y += 10;
 
   // Items sold table
@@ -88,6 +88,9 @@ export function downloadCSV(report: DailyReport): void {
     `Total Sales,${report.totalSales}`,
     `Discount,${report.totalDiscount}`,
     `Revenue,${report.totalRevenue}`,
+    `Kitchen Tickets Printed,${report.kitchenTicketsPrinted || 0}`,
+    `Customer Bills Printed,${report.customerBillsPrinted || 0}`,
+    `WhatsApp Sent,${report.whatsappCount}`,
     '', 'Item,Qty,Revenue',
     ...Object.entries(report.itemsSold).sort((a, b) => b[1] - a[1]).map(([n, q]) => `"${n}",${q},${report.itemsRevenue?.[n] || 0}`),
     '', 'Payment,Count',

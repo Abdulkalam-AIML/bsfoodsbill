@@ -39,6 +39,8 @@ export interface Bill {
   createdAt: string;
   printed: boolean;
   whatsappSent: boolean;
+  kitchenTicketPrinted?: boolean;
+  customerBillPrinted?: boolean;
 }
 
 export interface DailyReport {
@@ -54,6 +56,8 @@ export interface DailyReport {
   whatsappCount: number;
   peakHour: string;
   hourlyData: Record<string, number>;
+  kitchenTicketsPrinted: number;
+  customerBillsPrinted: number;
 }
 
 export interface CafeSettings {

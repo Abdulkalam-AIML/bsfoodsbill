@@ -130,27 +130,24 @@ export function generateThermalReceipt(bill: Bill, settings?: CafeSettings): jsP
   // Generate all text lines first to determine page height
   const lines: string[] = [];
   
-  lines.push('================================');
   lines.push(centerText(s.cafeName, 32));
   
-  const taglineLines = wrapText(s.tagline, 32);
-  taglineLines.forEach(tl => {
-    lines.push(centerText(tl, 32));
-  });
-  lines.push('================================');
-  lines.push('');
+  if (s.tagline) {
+    const taglineLines = wrapText(s.tagline, 32);
+    taglineLines.forEach(tl => {
+      lines.push(centerText(tl, 32));
+    });
+  }
+  lines.push('--------------------------------');
   lines.push(formatRow(`Bill No: #${bill.billNumber}`, `Table: ${bill.tableNumber || '1'}`, 32));
-  lines.push('');
   
   const date = new Date(bill.createdAt);
   const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   lines.push(formatRow(`Date: ${dateStr}`, `Time: ${timeStr}`, 32));
-  lines.push('');
   lines.push('--------------------------------');
   lines.push(formatItemRows('ITEM', 'QTY', 'AMOUNT', 32)[0]);
   lines.push('--------------------------------');
-  lines.push('');
   
   bill.items.forEach(item => {
     const amtStr = `Rs. ${item.price * item.quantity}`;
@@ -158,35 +155,27 @@ export function generateThermalReceipt(bill: Bill, settings?: CafeSettings): jsP
     itemRows.forEach(r => lines.push(r));
   });
   
-  lines.push('');
   lines.push('--------------------------------');
-  lines.push('');
   lines.push(formatRow('Subtotal', `Rs. ${bill.subtotal}`, 32));
-  lines.push(formatRow('Discount', `Rs. ${bill.discount}`, 32));
-  lines.push('');
-  lines.push('================================');
-  lines.push(formatRow('TOTAL', `Rs. ${bill.total}`, 32));
-  lines.push('================================');
-  lines.push('');
-  lines.push(`Payment: ${bill.paymentMethod.toUpperCase()}`);
-  lines.push('');
+  if (bill.discount > 0) {
+    lines.push(formatRow('Discount', `Rs. ${bill.discount}`, 32));
+  }
   lines.push('--------------------------------');
-  lines.push('');
+  lines.push(formatRow('TOTAL', `Rs. ${bill.total}`, 32));
+  lines.push('--------------------------------');
+  lines.push(formatRow('Payment Method', bill.paymentMethod.toUpperCase(), 32));
+  lines.push('--------------------------------');
   lines.push(centerText('Thank You For Visiting', 32));
-  lines.push(centerText(s.cafeName, 32));
-  lines.push('');
-  lines.push(centerText('Powered By', 32));
-  lines.push(centerText('NexLayer Private Limited', 32));
-  lines.push('');
   lines.push(centerText('Visit Again', 32));
-  lines.push('');
-  lines.push('================================');
+  lines.push('--------------------------------');
+  lines.push(centerText('Powered By', 32));
+  lines.push(centerText(s.developerName || 'NexLayer Private Limited', 32));
 
   const lineCount = lines.length;
-  const lineSpacing = 4.5; // mm per line
+  const lineSpacing = 3.6; // mm per line (20% reduction from 4.5)
   const margin = 5; // mm left margin
-  const topBottomMargin = 10; // mm top and bottom margins
-  const pageHeight = (lineCount * lineSpacing) + topBottomMargin;
+  const topBottomMargin = 8; // 4mm top and 4mm bottom margin
+  const pageHeight = ((lineCount - 1) * lineSpacing) + topBottomMargin;
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -198,10 +187,13 @@ export function generateThermalReceipt(bill: Bill, settings?: CafeSettings): jsP
   doc.setFont('courier', 'normal');
   doc.setFontSize(10);
   
-  let y = 10;
+  let y = 4; // Start at 4mm top margin
   lines.forEach(line => {
     // Check if it's the TOTAL row or headers to style in bold
-    const isBold = line.includes('TOTAL   ') || line.includes('================================') || line.includes('--------------------------------') || line.includes(s.cafeName.substring(0, 10));
+    const isBold = line.startsWith('TOTAL') || 
+                   line.includes('================================') || 
+                   line.includes('--------------------------------') || 
+                   line.includes(s.cafeName.substring(0, 10));
     
     if (isBold) {
       doc.setFont('courier', 'bold');
@@ -326,14 +318,15 @@ export function generateDailyReportPDF(report: DailyReport, settings?: CafeSetti
   doc.setTextColor(10, 14, 39);
   doc.text('PERFORMANCE ANALYTICS', margin, y);
   y += 8;
-
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(`Peak Sales Hour: ${report.peakHour}`, margin, y);
   y += 6;
   doc.text(`WhatsApp Bills Sent: ${report.whatsappCount}`, margin, y);
   y += 6;
-  doc.text(`Physical Bills Printed: ${report.printCount}`, margin, y);
+  doc.text(`Kitchen Tickets Printed: ${report.kitchenTicketsPrinted || 0}`, margin, y);
+  y += 6;
+  doc.text(`Customer Bills Printed: ${report.customerBillsPrinted || 0}`, margin, y);
   y += 15;
 
   // Payment Methods
@@ -357,10 +350,58 @@ export function generateDailyReportPDF(report: DailyReport, settings?: CafeSetti
   return doc;
 }
 
+// ---- KOT Receipt (80mm) ----
+export function generateKOTReceipt(bill: Bill, settings?: CafeSettings): jsPDF {
+  const s = settings || DEFAULT_SETTINGS;
+  const pageWidth = 80;
+  
+  const lines: string[] = [];
+  lines.push(centerText('BS FOODS KITCHEN', 32));
+  lines.push(centerText(`KOT #${bill.billNumber}`, 32));
+  lines.push('--------------------------------');
+  lines.push(formatRow(`Table: ${bill.tableNumber || '1'}`, `Time: ${formatTime(bill.createdAt)}`, 32));
+  lines.push('--------------------------------');
+  lines.push('Items:');
+  lines.push('');
+  
+  bill.items.forEach(item => {
+    lines.push(`${item.quantity} x ${item.name}`);
+  });
+  lines.push('--------------------------------');
+
+  const lineCount = lines.length;
+  const lineSpacing = 3.0; // mm per line
+  const margin = 5; // mm left margin
+  const topBottomMargin = 5; // mm
+  const pageHeight = Math.max(30, ((lineCount - 1) * lineSpacing) + topBottomMargin); // target: 3cm to 4cm
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [pageWidth, pageHeight],
+  });
+
+  doc.setFont('courier', 'bold');
+  doc.setFontSize(10);
+  
+  let y = 3.5;
+  lines.forEach(line => {
+    doc.text(line, margin, y);
+    y += lineSpacing;
+  });
+
+  return doc;
+}
+
 // ---- Export Helpers ----
 export function downloadThermalReceipt(bill: Bill, settings?: CafeSettings): void {
   const doc = generateThermalReceipt(bill, settings);
   doc.save(`BS-Bill-${bill.billNumber}.pdf`);
+}
+
+export function downloadKOTReceipt(bill: Bill, settings?: CafeSettings): void {
+  const doc = generateKOTReceipt(bill, settings);
+  doc.save(`BS-KOT-${bill.billNumber}.pdf`);
 }
 
 export function downloadReportPDF(report: DailyReport, settings?: CafeSettings): void {
@@ -368,8 +409,56 @@ export function downloadReportPDF(report: DailyReport, settings?: CafeSettings):
   doc.save(`BS-Daily-Report-${report.date}.pdf`);
 }
 
-export function printBill(bill: Bill, settings?: CafeSettings): void {
-  const doc = generateThermalReceipt(bill, settings);
-  const blobUrl = doc.output('bloburl');
-  window.open(blobUrl as unknown as string);
+export function printPDFViaIframe(doc: jsPDF): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') {
+      resolve();
+      return;
+    }
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+    
+    const blob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(blob);
+    iframe.src = blobUrl;
+    
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.error('Failed to print via iframe', e);
+        // Fallback
+        const newTab = window.open(blobUrl, '_blank');
+        if (newTab) newTab.focus();
+      }
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+        URL.revokeObjectURL(blobUrl);
+        resolve();
+      }, 1500);
+    };
+  });
+}
+
+export async function printBill(
+  bill: Bill,
+  settings?: CafeSettings,
+  options?: { printKOT?: boolean; printCustomer?: boolean }
+): Promise<void> {
+  const opts = options || { printKOT: true, printCustomer: true };
+
+  if (opts.printKOT) {
+    const kotDoc = generateKOTReceipt(bill, settings);
+    await printPDFViaIframe(kotDoc);
+  }
+
+  if (opts.printCustomer) {
+    const customerDoc = generateThermalReceipt(bill, settings);
+    await printPDFViaIframe(customerDoc);
+  }
 }

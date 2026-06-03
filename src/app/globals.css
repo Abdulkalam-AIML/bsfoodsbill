@@ -148,7 +148,16 @@ body {
 /* Print styles */
 @media print {
   .no-print { display: none !important; }
-  body { background: white; color: black; }
+  body {
+    background: white;
+    color: black;
+    margin: 0;
+    padding: 0;
+  }
+  @page {
+    size: 80mm auto;
+    margin: 1mm;
+  }
 }
 
 /* Hide scrollbar */
