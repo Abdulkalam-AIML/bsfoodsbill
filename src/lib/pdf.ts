@@ -445,20 +445,194 @@ export function printPDFViaIframe(doc: jsPDF): Promise<void> {
   });
 }
 
+function getKOTHtml(bill: Bill, s: CafeSettings): string {
+  const timeStr = formatTime(bill.createdAt).toUpperCase();
+  const separator32 = '='.repeat(32);
+  const separator20 = '='.repeat(20);
+
+  return `
+    <div class="kot-receipt-wrapper" style="width: 100%; box-sizing: border-box; text-align: left; word-break: break-word;">
+      <div style="text-align: center; white-space: pre; font-weight: 700; margin: 0;">${separator32}</div>
+      <div class="bold-text" style="text-align: center; font-size: 16px; margin: 2px 0;">BS FOODS CAFE</div>
+      <div class="bold-text" style="text-align: center; font-size: 13px; margin: 2px 0;">KITCHEN ORDER TICKET</div>
+      <div style="text-align: center; white-space: pre; font-weight: 700; margin: 0;">${separator20}</div>
+      
+      <div style="margin: 12px 0 6px 0;">
+        <span class="bold-text">Table: ${bill.tableNumber || '1'}</span>
+      </div>
+      
+      <div style="margin: 6px 0 12px 0;">
+        <span class="bold-text">Time: ${timeStr}</span>
+      </div>
+      
+      <div style="text-align: center; white-space: pre; font-weight: 700; margin: 0 0 12px 0;">${separator32}</div>
+      
+      <table class="receipt-table">
+        <tbody>
+          ${bill.items.map(item => `
+            <tr class="bold-text" style="font-size: 14px;">
+              <td style="width: 15%; vertical-align: top; padding: 3px 0;">${item.quantity} x</td>
+              <td style="width: 85%; vertical-align: top; padding: 3px 0; white-space: normal;">${item.name}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      
+      <div style="text-align: center; white-space: pre; font-weight: 700; margin: 12px 0 0 0;">${separator32}</div>
+    </div>
+  `;
+}
+
+function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
+  const dateStr = formatDate(bill.createdAt);
+  const timeStr = formatTime(bill.createdAt).toUpperCase();
+  const separator32 = '='.repeat(32);
+  const separator16 = '='.repeat(16);
+  
+  // Format tagline (split standard text for beautiful aesthetic)
+  const tagline = s.tagline || 'Smart Billing Experience for Modern Cafes';
+  const taglineHtml = tagline
+    .replace(/for/i, '<br/>For')
+    .replace(/\n/g, '<br/>');
+
+  return `
+    <div class="customer-receipt-wrapper" style="width: 100%; box-sizing: border-box; text-align: left; word-break: break-word;">
+      <div style="text-align: center; white-space: pre; font-weight: 700; margin: 0;">${separator32}</div>
+      <div class="bold-text" style="text-align: center; font-size: 16px; margin: 2px 0;">BS FOODS CAFE</div>
+      <div style="text-align: center; font-size: 12px; margin: 2px 0; font-weight: 700; line-height: 1.3;">
+        ${taglineHtml}
+      </div>
+      <div style="text-align: center; white-space: pre; font-weight: 700; margin: 0 0 12px 0;">${separator16}</div>
+      
+      <div class="bold-text" style="font-size: 14px; margin: 12px 0 6px 0;">Bill #${bill.billNumber}</div>
+      <div style="margin: 6px 0 6px 0; font-weight: 700;">Table: ${bill.tableNumber || '1'}</div>
+      
+      <div style="margin: 6px 0 6px 0; font-weight: 700;">Date: ${dateStr}</div>
+      <div style="margin: 6px 0 12px 0; font-weight: 700;">Time: ${timeStr}</div>
+      
+      <div style="text-align: center; white-space: pre; font-weight: 700; margin: 0 0 8px 0;">${separator32}</div>
+      
+      <table class="receipt-table">
+        <thead>
+          <tr class="bold-text">
+            <th style="width: 60%; text-align: left; padding-bottom: 6px;">ITEM</th>
+            <th style="width: 15%; text-align: center; padding-bottom: 6px;">QTY</th>
+            <th style="width: 10%; text-align: right; padding-bottom: 6px;">RATE</th>
+            <th style="width: 15%; text-align: right; padding-bottom: 6px;">TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bill.items.map(item => `
+            <tr class="bold-text" style="font-weight: 700;">
+              <td style="width: 60%; text-align: left; vertical-align: top; padding: 4px 0;">${item.name}</td>
+              <td style="width: 15%; text-align: center; vertical-align: top; padding: 4px 0;">${item.quantity}</td>
+              <td style="width: 10%; text-align: right; vertical-align: top; padding: 4px 0;">₹${item.price}</td>
+              <td style="width: 15%; text-align: right; vertical-align: top; padding: 4px 0;">₹${item.price * item.quantity}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      
+      <div style="text-align: center; white-space: pre; font-weight: 700; margin: 8px 0 8px 0;">${separator32}</div>
+      
+      <table style="width: 100%; font-weight: 700; border-collapse: collapse; font-size: 13px;">
+        <tr>
+          <td style="text-align: left; padding: 3px 0;">Subtotal</td>
+          <td style="text-align: right; padding: 3px 0;">₹${bill.subtotal}</td>
+        </tr>
+        <tr>
+          <td style="text-align: left; padding: 3px 0;">Discount</td>
+          <td style="text-align: right; padding: 3px 0;">₹${bill.discount}</td>
+        </tr>
+      </table>
+      
+      <div style="text-align: center; white-space: pre; font-weight: 700; margin: 8px 0 8px 0;">${separator32}</div>
+      
+      <div class="bold-text" style="display: flex; justify-content: space-between; font-size: 15px; margin: 6px 0;">
+        <span># GRAND TOTAL</span>
+        <span>₹${bill.total}</span>
+      </div>
+      
+      <div style="margin: 6px 0 12px 0; font-weight: 700;">Payment: ${bill.paymentMethod.toUpperCase()}</div>
+      
+      <div style="text-align: center; white-space: pre; font-weight: 700; margin: 12px 0 12px 0;">${separator32}</div>
+      
+      <div style="text-align: center; font-weight: 700; line-height: 1.4; margin-top: 12px;">
+        <div style="margin-bottom: 8px;">Thank You For Visiting</div>
+        <div class="bold-text" style="font-size: 14px; margin-bottom: 12px;">BS FOODS CAFE</div>
+        <div style="font-size: 10px; font-weight: normal; margin-bottom: 12px; line-height: 1.2;">
+          Powered By<br/>
+          <strong>NexLayer Private Limited</strong>
+        </div>
+        <div style="margin-top: 8px;">Visit Again ❤️</div>
+      </div>
+      
+      <div style="text-align: center; white-space: pre; font-weight: 700; margin: 12px 0 0 0;">${separator32}</div>
+    </div>
+  `;
+}
+
 export async function printBill(
   bill: Bill,
   settings?: CafeSettings,
   options?: { printKOT?: boolean; printCustomer?: boolean }
 ): Promise<void> {
-  const opts = options || { printKOT: true, printCustomer: true };
+  if (typeof window === 'undefined') return;
 
-  if (opts.printKOT) {
-    const kotDoc = generateKOTReceipt(bill, settings);
-    await printPDFViaIframe(kotDoc);
+  const opts = options || { printKOT: true, printCustomer: true };
+  const s = settings || DEFAULT_SETTINGS;
+
+  // Fallback to PDF if printing function is not supported natively
+  if (typeof window.print !== 'function') {
+    if (opts.printKOT) {
+      const kotDoc = generateKOTReceipt(bill, settings);
+      await printPDFViaIframe(kotDoc);
+    }
+    if (opts.printCustomer) {
+      const customerDoc = generateThermalReceipt(bill, settings);
+      await printPDFViaIframe(customerDoc);
+    }
+    return;
   }
 
+  // 1. Build receipt(s) HTML
+  let html = '';
+  if (opts.printKOT) {
+    html += getKOTHtml(bill, s);
+  }
+  if (opts.printKOT && opts.printCustomer) {
+    html += '<div class="page-break"></div>';
+  }
   if (opts.printCustomer) {
-    const customerDoc = generateThermalReceipt(bill, settings);
-    await printPDFViaIframe(customerDoc);
+    html += getCustomerReceiptHtml(bill, s);
+  }
+
+  // 2. Append print container to document body
+  const container = document.createElement('div');
+  container.id = 'thermal-print-container';
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  // 3. Pause briefly to guarantee browser layout engines complete rendering
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  // 4. Trigger browser print interface
+  try {
+    window.print();
+  } catch (err) {
+    console.error('HTML print failed, falling back to PDF printing', err);
+    if (opts.printKOT) {
+      const kotDoc = generateKOTReceipt(bill, settings);
+      await printPDFViaIframe(kotDoc);
+    }
+    if (opts.printCustomer) {
+      const customerDoc = generateThermalReceipt(bill, settings);
+      await printPDFViaIframe(customerDoc);
+    }
+  } finally {
+    // 5. Clean up DOM by removing the container
+    if (document.body.contains(container)) {
+      document.body.removeChild(container);
+    }
   }
 }
