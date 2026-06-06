@@ -152,10 +152,10 @@ body {
     display: none !important;
   }
 
-  /* Configure page margins and size */
+  /* Configure page margins and size - minimize vertical margins to prevent white space */
   @page {
     size: 80mm auto;
-    margin: 1mm;
+    margin: 0mm 1mm !important;
   }
 
   /* Ensure body takes full width with zero margins */
@@ -172,15 +172,16 @@ body {
   /* Thermal print container styles */
   #thermal-print-container {
     display: block !important;
-    width: 80mm !important;
-    margin: 0 !important;
-    padding: 0 1mm !important;
+    width: 76mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
     box-sizing: border-box !important;
     background: #ffffff !important;
     color: #000000 !important;
-    font-family: monospace, Courier, monospace !important;
-    font-size: 13px !important;
-    line-height: 1.3 !important;
+    font-family: 'JetBrains Mono', monospace, Courier !important;
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    letter-spacing: -0.1px !important;
   }
 
   /* Force pure black, remove opacity/transparency */
@@ -202,15 +203,43 @@ body {
     width: 100% !important;
     border-collapse: collapse !important;
     table-layout: fixed !important;
-    margin: 8px 0 !important;
+    margin: 2px 0 !important;
   }
 
-  .receipt-table th, .receipt-table td {
+  .receipt-table th {
     padding: 2px 0 !important;
+    font-weight: 700 !important;
+    border-bottom: 1px solid #000000 !important;
+  }
+
+  .receipt-table td {
+    padding: 1.5px 0 !important;
     vertical-align: top !important;
     word-break: break-word !important;
     overflow-wrap: break-word !important;
     white-space: normal !important;
+  }
+
+  /* Helper styling classes to reduce spacing and draw lines */
+  .receipt-double-line {
+    border-top: 3px double #000000 !important;
+    height: 0 !important;
+    margin: 4px 0 !important;
+    padding: 0 !important;
+  }
+
+  .receipt-single-line {
+    border-top: 1px solid #000000 !important;
+    height: 0 !important;
+    margin: 4px 0 !important;
+    padding: 0 !important;
+  }
+
+  .receipt-dashed-line {
+    border-top: 1px dashed #000000 !important;
+    height: 0 !important;
+    margin: 4px 0 !important;
+    padding: 0 !important;
   }
 
   /* Page breaks between dual receipts */
