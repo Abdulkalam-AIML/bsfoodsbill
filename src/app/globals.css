@@ -155,33 +155,35 @@ body {
   /* Configure page margins and size - minimize vertical margins to prevent white space */
   @page {
     size: 80mm auto;
-    margin: 0mm 1mm !important;
+    margin: 1mm !important;
   }
 
   /* Ensure body takes full width with zero margins */
   html, body {
-    width: 80mm !important;
+    width: 72mm !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    overflow: visible !important;
   }
 
   /* Thermal print container styles */
   #thermal-print-container {
     display: block !important;
-    width: 76mm !important;
-    margin: 0 auto !important;
+    width: 72mm !important;
+    margin-left: 1mm !important;
+    margin-right: 1mm !important;
     padding: 0 !important;
     box-sizing: border-box !important;
     background: #ffffff !important;
     color: #000000 !important;
-    font-family: 'JetBrains Mono', monospace, Courier !important;
+    font-family: monospace !important;
     font-size: 11px !important;
     line-height: 1.25 !important;
-    letter-spacing: -0.1px !important;
+    overflow: visible !important;
   }
 
   /* Force pure black, remove opacity/transparency */
@@ -191,6 +193,7 @@ body {
     background: transparent !important;
     text-shadow: none !important;
     box-shadow: none !important;
+    overflow: visible !important;
   }
 
   /* Bold class for key fields to print with high density */
@@ -224,21 +227,21 @@ body {
   .receipt-double-line {
     border-top: 3px double #000000 !important;
     height: 0 !important;
-    margin: 4px 0 !important;
+    margin: 2px 0 !important;
     padding: 0 !important;
   }
 
   .receipt-single-line {
     border-top: 1px solid #000000 !important;
     height: 0 !important;
-    margin: 4px 0 !important;
+    margin: 2px 0 !important;
     padding: 0 !important;
   }
 
   .receipt-dashed-line {
     border-top: 1px dashed #000000 !important;
     height: 0 !important;
-    margin: 4px 0 !important;
+    margin: 2px 0 !important;
     padding: 0 !important;
   }
 

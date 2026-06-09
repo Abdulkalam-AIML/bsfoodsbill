@@ -415,23 +415,31 @@ export function generateKOTReceipt(bill: Bill, settings?: CafeSettings): jsPDF {
   const pageWidth = 80;
   
   const lines: string[] = [];
-  lines.push(centerText(s.cafeName, 32));
-  lines.push(centerText('KOT', 32));
-  lines.push('');
+  lines.push('------------------------------------------');
+  lines.push(centerText(s.cafeName.toUpperCase(), 42));
+  lines.push(centerText('KITCHEN ORDER TICKET', 42));
+  lines.push('------------------------------------------');
+  
   lines.push(`Table: ${bill.tableNumber || 'Takeaway'}`);
-  lines.push('');
-  
-  bill.items.forEach(item => {
-    lines.push(`${item.quantity} x ${item.name}`);
-  });
-  lines.push('');
-  
   const timeStr = formatTime(bill.createdAt).toUpperCase();
   lines.push(`Time: ${timeStr}`);
+  lines.push('------------------------------------------');
+  
+  bill.items.forEach((item, index) => {
+    lines.push(`${item.quantity} x ${item.name}`);
+    if (index < bill.items.length - 1) {
+      lines.push('');
+    }
+  });
+  
+  lines.push('------------------------------------------');
+  lines.push('Print Time:');
+  lines.push(timeStr);
+  lines.push('------------------------------------------');
 
   const lineCount = lines.length;
   const lineSpacing = 3.6; // mm per line
-  const margin = 5; // mm left margin
+  const margin = 4.5; // mm left margin
   const topBottomMargin = 6; // mm total margins
   const pageHeight = ((lineCount - 1) * lineSpacing) + topBottomMargin;
 
@@ -442,7 +450,7 @@ export function generateKOTReceipt(bill: Bill, settings?: CafeSettings): jsPDF {
   });
 
   doc.setFont('courier', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   
   let y = 4.5;
   lines.forEach(line => {
@@ -509,25 +517,35 @@ function getKOTHtml(bill: Bill, s: CafeSettings): string {
   const timeStr = formatTime(bill.createdAt).toUpperCase();
   
   return `
-    <div class="kot-receipt-wrapper" style="width: 100%; box-sizing: border-box; text-align: left; font-family: 'JetBrains Mono', monospace, Courier !important; font-size: 11.5px; line-height: 1.25;">
-      <div style="text-align: center; font-weight: bold; font-size: 13.5px; margin-bottom: 1px;">${s.cafeName}</div>
-      <div style="text-align: center; font-weight: bold; font-size: 13.5px; margin-bottom: 4px;">KOT</div>
+    <div class="kot-receipt-wrapper" style="width: 100%; box-sizing: border-box; text-align: left; font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 0; margin: 0;">
+      <div class="receipt-dashed-line"></div>
       
-      <div style="font-weight: bold; font-size: 12.5px; margin-bottom: 6px;">
-        Table: ${bill.tableNumber || 'Takeaway'}
-      </div>
+      <div class="bold-text" style="text-align: center; font-size: 12px; margin: 2px 0 1px 0;">${s.cafeName.toUpperCase()}</div>
+      <div class="bold-text" style="text-align: center; font-size: 12px; margin: 1px 0 2px 0;">KITCHEN ORDER TICKET</div>
       
-      <div style="margin-bottom: 6px;">
+      <div class="receipt-single-line"></div>
+      
+      <div class="bold-text" style="font-size: 12px; margin: 4px 0 2px 0;">Table: ${bill.tableNumber || 'Takeaway'}</div>
+      <div class="bold-text" style="font-size: 12px; margin: 2px 0 4px 0;">Time: ${timeStr}</div>
+      
+      <div class="receipt-dashed-line"></div>
+      
+      <div style="margin: 4px 0;">
         ${bill.items.map(item => `
-          <div style="font-weight: bold; font-size: 12.5px; margin: 2.5px 0;">
+          <div class="bold-text" style="font-size: 11px; margin: 6px 0; word-break: break-word; overflow-wrap: break-word; white-space: normal;">
             ${item.quantity} x ${item.name}
           </div>
         `).join('')}
       </div>
       
-      <div style="font-size: 10.5px; font-weight: bold; margin-top: 6px;">
-        Time: ${timeStr}
+      <div class="receipt-dashed-line"></div>
+      
+      <div class="bold-text" style="font-size: 11px; margin: 4px 0;">
+        Print Time:<br/>
+        ${timeStr}
       </div>
+      
+      <div class="receipt-dashed-line"></div>
     </div>
   `;
 }
@@ -546,25 +564,25 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
   const tblInfo = bill.orderType === 'dine-in' ? ` (Tbl ${bill.tableNumber})` : '';
 
   return `
-    <div class="customer-receipt-wrapper" style="width: 100%; box-sizing: border-box; text-align: left; word-break: break-word;">
+    <div class="customer-receipt-wrapper" style="width: 100%; box-sizing: border-box; text-align: left; word-break: break-word; font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 0; margin: 0;">
       <!-- Header -->
-      <div class="bold-text" style="text-align: center; font-size: 15px; margin: 2px 0 1px 0;">${s.cafeName}</div>
-      ${s.address ? `<div style="text-align: center; font-size: 10px; line-height: 1.2; margin: 1px 0;">${s.address}</div>` : ''}
-      ${s.phone ? `<div style="text-align: center; font-size: 10px; margin: 1px 0;">Mo: ${s.phone}</div>` : ''}
+      <div class="bold-text" style="text-align: center; font-size: 12px; margin: 2px 0 1px 0;">${s.cafeName.toUpperCase()}</div>
+      ${s.address ? `<div style="text-align: center; font-size: 11px; line-height: 1.2; margin: 1px 0;">${s.address}</div>` : ''}
+      ${s.phone ? `<div style="text-align: center; font-size: 11px; margin: 1px 0;">Mo: ${s.phone}</div>` : ''}
       
       <div class="receipt-double-line"></div>
       
       <!-- Customer Info -->
-      <div style="font-weight: bold; margin: 2px 0;">Name: ${bill.customerName || ''}</div>
+      <div class="bold-text" style="margin: 2px 0; font-size: 11px;">Name: ${bill.customerName || ''}</div>
       
       <div class="receipt-single-line"></div>
       
       <!-- Bill Meta Info -->
-      <div style="display: flex; justify-content: space-between; font-weight: bold; margin: 2px 0;">
+      <div class="bold-text" style="display: flex; justify-content: space-between; margin: 2px 0; font-size: 11px;">
         <span>Date: ${dateStr} ${timeStr}</span>
         <span>${bill.orderType.toUpperCase()}</span>
       </div>
-      <div style="display: flex; justify-content: space-between; font-weight: bold; margin: 2px 0;">
+      <div class="bold-text" style="display: flex; justify-content: space-between; margin: 2px 0; font-size: 11px;">
         <span>Cashier: ${cashierName}${tblInfo}</span>
         <span>Bill No: ${bill.billNumber}</span>
       </div>
@@ -572,9 +590,9 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
       <div class="receipt-single-line"></div>
       
       <!-- Items Table -->
-      <table class="receipt-table">
+      <table class="receipt-table" style="font-size: 11px;">
         <thead>
-          <tr class="bold-text">
+          <tr class="bold-text" style="font-size: 12px;">
             <th style="width: 8%; text-align: left;">No.</th>
             <th style="width: 44%; text-align: left;">Item</th>
             <th style="width: 14%; text-align: center;">Qty</th>
@@ -584,12 +602,12 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
         </thead>
         <tbody>
           ${bill.items.map((item, index) => `
-            <tr class="bold-text" style="font-weight: 700;">
-              <td style="text-align: left;">${index + 1}</td>
-              <td style="text-align: left; white-space: normal;">${item.name}</td>
-              <td style="text-align: center;">${item.quantity}</td>
-              <td style="text-align: right;">${item.price.toFixed(2)}</td>
-              <td style="text-align: right;">${(item.price * item.quantity).toFixed(2)}</td>
+            <tr class="bold-text" style="font-weight: 700; font-size: 11px;">
+              <td style="text-align: left; width: 8%;">${index + 1}</td>
+              <td style="text-align: left; width: 44%; white-space: normal; word-break: break-word; overflow-wrap: break-word;">${item.name}</td>
+              <td style="text-align: center; width: 14%;">${item.quantity}</td>
+              <td style="text-align: right; width: 16%;">${item.price.toFixed(2)}</td>
+              <td style="text-align: right; width: 18%;">${(item.price * item.quantity).toFixed(2)}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -598,13 +616,13 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
       <div class="receipt-single-line"></div>
       
       <!-- Totals Section -->
-      <div style="display: flex; justify-content: space-between; font-weight: bold; margin: 2px 0;">
+      <div class="bold-text" style="display: flex; justify-content: space-between; margin: 2px 0; font-size: 11px;">
         <span>Total Qty: ${totalQty}</span>
         <span>Subtotal: ₹${bill.subtotal.toFixed(2)}</span>
       </div>
       
       ${bill.discount > 0 ? `
-        <div style="display: flex; justify-content: space-between; font-weight: bold; margin: 2px 0;">
+        <div class="bold-text" style="display: flex; justify-content: space-between; margin: 2px 0; font-size: 11px;">
           <span></span>
           <span>
             ${isOffer ? 'Offer Discount' : `Discount${bill.discountType === 'percentage' ? ` (${bill.discountValue}%)` : ''}`}: 
@@ -616,14 +634,14 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
       <div class="receipt-double-line"></div>
       
       <!-- Grand Total -->
-      <div class="bold-text" style="display: flex; justify-content: space-between; font-size: 14px; margin: 4px 0;">
+      <div class="bold-text" style="display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0;">
         <span>GRAND TOTAL</span>
         <span>₹${bill.total.toFixed(2)}</span>
       </div>
       
       <div class="receipt-single-line"></div>
       
-      <div style="display: flex; justify-content: space-between; font-weight: bold; margin: 2px 0;">
+      <div class="bold-text" style="display: flex; justify-content: space-between; margin: 2px 0; font-size: 11px;">
         <span>Payment Method:</span>
         <span>${bill.paymentMethod.toUpperCase()}</span>
       </div>
@@ -631,9 +649,9 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
       <div class="receipt-single-line"></div>
       
       <!-- Footer -->
-      <div style="text-align: center; font-weight: bold; line-height: 1.3; margin-top: 6px;">
+      <div class="bold-text" style="text-align: center; line-height: 1.3; margin-top: 4px; font-size: 11px;">
         <div>Thank You For Visiting!</div>
-        <div style="font-size: 12px; margin-top: 1px;">Visit Again ❤️</div>
+        <div style="font-size: 11px; margin-top: 1px;">Visit Again ❤️</div>
         <div style="font-size: 8.5px; font-weight: normal; margin-top: 4px; color: #000000 !important; line-height: 1.2;">
           Powered By<br/>
           <strong>NexLayer Private Limited</strong>
