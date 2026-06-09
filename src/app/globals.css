@@ -187,8 +187,10 @@ body {
 
   .receipt {
     width: 76mm !important;
+    max-width: none !important;
     margin: 0 auto !important;
     padding: 2mm !important;
+    padding-left: 4mm !important; /* safe left padding to prevent physical cutting */
     box-sizing: border-box !important;
     border: 1px solid red !important; /* Temporary debug border */
     background: #ffffff !important;
@@ -198,8 +200,10 @@ body {
 
   .kot {
     width: 76mm !important;
+    max-width: none !important;
     margin: 0 auto !important;
     padding: 2mm !important;
+    padding-left: 4mm !important; /* safe left padding to prevent physical cutting */
     box-sizing: border-box !important;
     border: 1px solid red !important; /* Temporary debug border */
     background: #ffffff !important;

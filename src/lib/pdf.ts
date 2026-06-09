@@ -516,7 +516,7 @@ function getKOTHtml(bill: Bill, s: CafeSettings): string {
   const timeStr = formatTime(bill.createdAt).toUpperCase();
   
   return `
-    <div class="kot" style="font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 2mm; margin: 0 auto; box-sizing: border-box; width: 76mm; text-align: left;">
+    <div class="kot" style="font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 2mm; padding-left: 4mm; margin: 0 auto; box-sizing: border-box; width: 76mm; text-align: left; overflow: visible;">
       <div class="receipt-single-line"></div>
       
       <div class="bold-text" style="text-align: center; font-size: 12px; margin: 2px 0 1px 0;">${s.cafeName.toUpperCase()}</div>
@@ -562,7 +562,7 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
   const tblInfo = bill.orderType === 'dine-in' ? ` (Tbl ${bill.tableNumber})` : '';
 
   return `
-    <div class="receipt" style="font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 2mm; margin: 0 auto; box-sizing: border-box; width: 76mm; text-align: left; word-break: break-word;">
+    <div class="receipt" style="font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 2mm; padding-left: 4mm; margin: 0 auto; box-sizing: border-box; width: 76mm; text-align: left; word-break: break-word; overflow: visible;">
       <!-- Header -->
       <div class="bold-text" style="text-align: center; font-size: 12px; margin: 2px 0 1px 0;">${s.cafeName.toUpperCase()}</div>
       ${s.address ? `<div style="text-align: center; font-size: 11px; line-height: 1.2; margin: 1px 0;">${s.address}</div>` : ''}
@@ -700,6 +700,26 @@ export async function printBill(
 
   // 3. Pause briefly to guarantee browser layout engines complete rendering
   await new Promise((resolve) => setTimeout(resolve, 50));
+
+  // Debug Sizing Logs
+  try {
+    const pContainer = document.getElementById('thermal-print-container');
+    if (pContainer) {
+      console.log('=== THERMAL PRINT DEBUG ===');
+      console.log('Container Offset Width:', pContainer.offsetWidth + 'px (' + (pContainer.offsetWidth * 0.264583).toFixed(1) + 'mm)');
+      const receiptEl = pContainer.querySelector('.receipt');
+      if (receiptEl) {
+        console.log('Receipt Wrapper Width:', (receiptEl as HTMLElement).offsetWidth + 'px (' + ((receiptEl as HTMLElement).offsetWidth * 0.264583).toFixed(1) + 'mm)');
+      }
+      const kotEl = pContainer.querySelector('.kot');
+      if (kotEl) {
+        console.log('KOT Wrapper Width:', (kotEl as HTMLElement).offsetWidth + 'px (' + ((kotEl as HTMLElement).offsetWidth * 0.264583).toFixed(1) + 'mm)');
+      }
+      console.log('===========================');
+    }
+  } catch (logErr) {
+    console.error('Failed to log print sizing metrics', logErr);
+  }
 
   // 4. Trigger browser print interface
   try {
