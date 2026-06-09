@@ -155,7 +155,7 @@ body {
   /* Configure page margins and size - minimize vertical margins to prevent white space */
   @page {
     size: 80mm auto;
-    margin: 1mm !important;
+    margin: 0 !important;
   }
 
   /* Ensure body takes full width with zero margins */
@@ -173,9 +173,8 @@ body {
   /* Thermal print container styles */
   #thermal-print-container {
     display: block !important;
-    width: 70mm !important;
-    margin-left: 6mm !important;
-    margin-right: 4mm !important;
+    width: 80mm !important;
+    margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
     background: #ffffff !important;
@@ -184,7 +183,28 @@ body {
     font-size: 11px !important;
     line-height: 1.25 !important;
     overflow: visible !important;
+  }
+
+  .receipt {
+    width: 76mm !important;
+    margin: 0 auto !important;
+    padding: 2mm !important;
+    box-sizing: border-box !important;
     border: 1px solid red !important; /* Temporary debug border */
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+  }
+
+  .kot {
+    width: 76mm !important;
+    margin: 0 auto !important;
+    padding: 2mm !important;
+    box-sizing: border-box !important;
+    border: 1px solid red !important; /* Temporary debug border */
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
   }
 
   /* Force pure black, remove opacity/transparency */
