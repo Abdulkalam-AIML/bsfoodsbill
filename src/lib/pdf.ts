@@ -517,7 +517,7 @@ function getKOTHtml(bill: Bill, s: CafeSettings): string {
   const timeStr = formatTime(bill.createdAt).toUpperCase();
   
   return `
-    <div class="kot-receipt-wrapper" style="width: 100%; box-sizing: border-box; text-align: left; font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 0; margin: 0;">
+    <div class="kot-receipt-wrapper" style="width: 70mm; box-sizing: border-box; text-align: left; font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 0; margin: 0;">
       <div class="receipt-dashed-line"></div>
       
       <div class="bold-text" style="text-align: center; font-size: 12px; margin: 2px 0 1px 0;">${s.cafeName.toUpperCase()}</div>
@@ -564,7 +564,7 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
   const tblInfo = bill.orderType === 'dine-in' ? ` (Tbl ${bill.tableNumber})` : '';
 
   return `
-    <div class="customer-receipt-wrapper" style="width: 100%; box-sizing: border-box; text-align: left; word-break: break-word; font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 0; margin: 0;">
+    <div class="customer-receipt-wrapper" style="width: 70mm; box-sizing: border-box; text-align: left; word-break: break-word; font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 0; margin: 0;">
       <!-- Header -->
       <div class="bold-text" style="text-align: center; font-size: 12px; margin: 2px 0 1px 0;">${s.cafeName.toUpperCase()}</div>
       ${s.address ? `<div style="text-align: center; font-size: 11px; line-height: 1.2; margin: 1px 0;">${s.address}</div>` : ''}

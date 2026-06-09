@@ -160,7 +160,7 @@ body {
 
   /* Ensure body takes full width with zero margins */
   html, body {
-    width: 72mm !important;
+    width: 80mm !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
@@ -173,9 +173,9 @@ body {
   /* Thermal print container styles */
   #thermal-print-container {
     display: block !important;
-    width: 72mm !important;
-    margin-left: 1mm !important;
-    margin-right: 1mm !important;
+    width: 70mm !important;
+    margin-left: 6mm !important;
+    margin-right: 4mm !important;
     padding: 0 !important;
     box-sizing: border-box !important;
     background: #ffffff !important;
@@ -184,6 +184,7 @@ body {
     font-size: 11px !important;
     line-height: 1.25 !important;
     overflow: visible !important;
+    border: 1px solid red !important; /* Temporary debug border */
   }
 
   /* Force pure black, remove opacity/transparency */
