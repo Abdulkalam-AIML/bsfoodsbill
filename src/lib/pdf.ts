@@ -562,7 +562,7 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
   const tblInfo = bill.orderType === 'dine-in' ? ` (Tbl ${bill.tableNumber})` : '';
 
   return `
-    <div class="receipt" style="font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 2mm; padding-left: 4mm; margin: 0 auto; box-sizing: border-box; width: 76mm; text-align: left; word-break: break-word; overflow: visible;">
+    <div class="receipt" style="font-family: monospace !important; font-size: 11px; line-height: 1.25; padding: 2mm; padding-left: 2mm; padding-right: 2mm; margin: 0 auto; box-sizing: border-box; width: 72mm; text-align: left; word-break: break-word; overflow: visible;">
       <!-- Header -->
       <div class="bold-text" style="text-align: center; font-size: 12px; margin: 2px 0 1px 0;">${s.cafeName.toUpperCase()}</div>
       ${s.address ? `<div style="text-align: center; font-size: 11px; line-height: 1.2; margin: 1px 0;">${s.address}</div>` : ''}
@@ -588,22 +588,22 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
       <div class="receipt-single-line"></div>
       
       <!-- Items Table -->
-      <table class="receipt-table" style="font-size: 11px;">
+      <table class="receipt-table" style="font-size: 10px;">
         <thead>
-          <tr class="bold-text" style="font-size: 12px;">
-            <th style="width: 40%; text-align: left;">Item</th>
-            <th style="width: 15%; text-align: center;">Qty</th>
+          <tr class="bold-text" style="font-size: 11px;">
+            <th style="width: 42%; text-align: left;">Item</th>
+            <th style="width: 12%; text-align: center;">Qty</th>
             <th style="width: 20%; text-align: right;">Rate</th>
-            <th style="width: 25%; text-align: right;">Amount</th>
+            <th style="width: 26%; text-align: right;">Amount</th>
           </tr>
         </thead>
         <tbody>
           ${bill.items.map((item) => `
-            <tr class="bold-text" style="font-weight: 700; font-size: 11px;">
-              <td style="text-align: left; width: 40%; white-space: normal; word-break: break-word; overflow-wrap: break-word;">${item.name}</td>
-              <td style="text-align: center; width: 15%;">${item.quantity}</td>
+            <tr class="bold-text" style="font-weight: 700; font-size: 10px;">
+              <td style="text-align: left; width: 42%; white-space: normal; word-break: break-word; overflow-wrap: break-word;">${item.name}</td>
+              <td style="text-align: center; width: 12%;">${item.quantity}</td>
               <td style="text-align: right; width: 20%;">${item.price.toFixed(2)}</td>
-              <td style="text-align: right; width: 25%;">${(item.price * item.quantity).toFixed(2)}</td>
+              <td style="text-align: right; width: 26%;">${(item.price * item.quantity).toFixed(2)}</td>
             </tr>
           `).join('')}
         </tbody>
