@@ -82,6 +82,7 @@ export interface AppState {
   bills: Bill[];
   loadBills: () => void;
   createBill: (printed: boolean, whatsappSent: boolean) => Bill;
+  updateBill: (id: string, updates: Partial<Bill>) => Bill | undefined;
   updateBillStatus: (
     id: string,
     printed?: boolean,
@@ -282,21 +283,65 @@ export const useStore = create<AppState>((set, get) => ({
       whatsappSent,
       kitchenTicketPrinted: false,
       customerBillPrinted: false,
+      status: 'PENDING',
+      kotPrinted: false,
+      billPrinted: false,
+      reportAdded: false,
     };
     saveBill(bill);
     const bills = [...state.bills, bill];
     set({ bills });
     return bill;
   },
+  updateBill: (id, updates) => {
+    let updatedBill: Bill | undefined;
+    const bills = get().bills.map((b) => {
+      if (b.id === id) {
+        updatedBill = { ...b, ...updates };
+        return updatedBill;
+      }
+      return b;
+    });
+    if (updatedBill) {
+      saveAllBills(bills);
+      set({ bills });
+    }
+    return updatedBill;
+  },
   updateBillStatus: (id, printed, whatsappSent, kitchenTicketPrinted, customerBillPrinted) => {
     const bills = get().bills.map((b) => {
       if (b.id === id) {
+        // Resolve printed states
+        const nextKotPrinted = kitchenTicketPrinted === true ? true : (b.kotPrinted || b.kitchenTicketPrinted || false);
+        const nextBillPrinted = customerBillPrinted === true ? true : (b.billPrinted || b.customerBillPrinted || false);
+        const nextWhatsappSent = whatsappSent !== undefined ? whatsappSent : b.whatsappSent;
+        const nextPrinted = printed !== undefined ? printed : b.printed;
+
+        // Transition status
+        let nextStatus = b.status || 'PENDING';
+        if (nextKotPrinted && nextStatus === 'PENDING') {
+          nextStatus = 'KOT_PRINTED';
+        }
+        if (nextBillPrinted || nextWhatsappSent) {
+          nextStatus = 'COMPLETED';
+        }
+
+        // reportAdded logic
+        let nextReportAdded = b.reportAdded || false;
+        if (nextStatus === 'COMPLETED' && !nextReportAdded) {
+          nextReportAdded = true;
+        }
+
         return {
           ...b,
-          printed: printed !== undefined ? printed : b.printed,
-          whatsappSent: whatsappSent !== undefined ? whatsappSent : b.whatsappSent,
-          kitchenTicketPrinted: kitchenTicketPrinted !== undefined ? kitchenTicketPrinted : b.kitchenTicketPrinted,
-          customerBillPrinted: customerBillPrinted !== undefined ? customerBillPrinted : b.customerBillPrinted,
+          printed: nextPrinted,
+          whatsappSent: nextWhatsappSent,
+          kitchenTicketPrinted: nextKotPrinted,
+          customerBillPrinted: nextBillPrinted,
+          kotPrinted: nextKotPrinted,
+          billPrinted: nextBillPrinted,
+          status: nextStatus,
+          reportAdded: nextReportAdded,
         };
       }
       return b;
@@ -336,6 +381,7 @@ export const useStore = create<AppState>((set, get) => ({
             status: 'occupied' as const,
             lastUpdated: new Date().toISOString(),
             startedAt: t.startedAt || new Date().toISOString(),
+            currentBillId: state.currentBillId,
           }
         : t,
     );
@@ -348,6 +394,8 @@ export const useStore = create<AppState>((set, get) => ({
     const table = state.tables.find((t) => t.number === num);
     if (!table) return;
 
+    const bill = table.currentBillId ? state.bills.find((b) => b.id === table.currentBillId) : null;
+
     set({
       cart: table.items,
       customerName: table.customerName,
@@ -355,10 +403,9 @@ export const useStore = create<AppState>((set, get) => ({
       orderType: table.orderType,
       tableNumber: table.number.toString(),
       orderNotes: table.orderNotes,
-      currentBillId: null,
-      billPrinted: false,
-      billWhatsappSent: false,
-      // Keep other state as is or reset
+      currentBillId: table.currentBillId || null,
+      billPrinted: bill ? (bill.customerBillPrinted || bill.billPrinted || false) : false,
+      billWhatsappSent: bill ? bill.whatsappSent : false,
     });
 
     // Mark table as available while editing? No, keep occupied but we are "resuming" it.

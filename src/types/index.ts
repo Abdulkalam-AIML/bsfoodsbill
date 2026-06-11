@@ -41,6 +41,10 @@ export interface Bill {
   whatsappSent: boolean;
   kitchenTicketPrinted?: boolean;
   customerBillPrinted?: boolean;
+  status?: 'PENDING' | 'KOT_PRINTED' | 'COMPLETED';
+  kotPrinted?: boolean;
+  billPrinted?: boolean;
+  reportAdded?: boolean;
 }
 
 export interface DailyReport {
@@ -96,6 +100,7 @@ export type TableState =
       status: 'available' | 'occupied';
       startedAt?: string;
       lastUpdated?: string;
+      currentBillId?: string | null;
     };
 
 export const MENU_CATEGORIES: MenuCategory[] = [

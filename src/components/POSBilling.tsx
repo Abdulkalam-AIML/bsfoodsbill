@@ -181,7 +181,7 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
     orderType, setOrderType, tableNumber, setTableNumber,
     paymentMethod, setPaymentMethod,
     discountType, setDiscountType, discountValue, setDiscountValue,
-    subtotal, discountAmount, total, createBill, settings, userRole,
+    subtotal, discountAmount, total, createBill, updateBill, settings, userRole,
     searchQuery, setSearchQuery, activeCategory, setActiveCategory,
     tables, holdTable, resumeTable, clearTable, completeOrder, loadTables,
     billPrinted, billWhatsappSent, setBillStatus, resetBillStatus
@@ -237,16 +237,30 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
         return;
       }
 
-      // 1. Create or get existing bill
+      const storeState = useStore.getState();
+
+      // 1. Create or update existing bill
       let bill;
-      if (!useStore.getState().currentBillId) {
+      if (!storeState.currentBillId) {
         bill = createBill(false, false);
-        useStore.getState().setBillStatus(false, false);
+        storeState.setBillStatus(false, false);
         // @ts-ignore
-        useStore.getState().currentBillId = bill.id;
+        storeState.currentBillId = bill.id;
       } else {
-        const billId = useStore.getState().currentBillId;
-        bill = useStore.getState().bills.find(b => b.id === billId);
+        const billId = storeState.currentBillId;
+        bill = updateBill(billId, {
+          items: cart,
+          subtotal: sub,
+          discount: disc,
+          discountType,
+          discountValue,
+          total: tot,
+          customerName,
+          customerPhone,
+          orderType,
+          tableNumber,
+          paymentMethod,
+        });
       }
 
       if (!bill) return;
@@ -259,15 +273,19 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
         }
         try {
           await printBill(bill, settings, { printKOT, printCustomer });
-          setBillStatus(true, undefined);
-          useStore.getState().updateBillStatus(bill.id, true, undefined, printKOT, printCustomer);
+          if (printCustomer) {
+            setBillStatus(true, undefined);
+          }
+          useStore.getState().updateBillStatus(bill.id, printCustomer ? true : undefined, undefined, printKOT, printCustomer);
           toast.success('Receipt sent to printer');
         } catch (e) {
           console.error(e);
           if (printKOT) downloadKOTReceipt(bill, settings);
           if (printCustomer) downloadThermalReceipt(bill, settings);
-          setBillStatus(true, undefined);
-          useStore.getState().updateBillStatus(bill.id, true, undefined, printKOT, printCustomer);
+          if (printCustomer) {
+            setBillStatus(true, undefined);
+          }
+          useStore.getState().updateBillStatus(bill.id, printCustomer ? true : undefined, undefined, printKOT, printCustomer);
           toast.success('Receipt downloaded');
         }
       }
@@ -284,8 +302,8 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
       }
 
       // 3. Check for full completion
-      const { billPrinted, billWhatsappSent } = useStore.getState();
-      if (billPrinted && billWhatsappSent) {
+      const updatedStoreState = useStore.getState();
+      if (updatedStoreState.billPrinted && updatedStoreState.billWhatsappSent) {
         completeOrder();
         resetBillStatus();
         setShowCart(false);
@@ -294,13 +312,13 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
           icon: '🎉',
         });
       } else {
-        const remaining = !billPrinted ? 'Print' : 'WhatsApp';
+        const remaining = !updatedStoreState.billPrinted ? 'Print' : 'WhatsApp';
         toast.info(`Please complete ${remaining} to finish the bill.`, {
           icon: '⏳',
         });
       }
     },
-    [cart, createBill, settings, completeOrder, setBillStatus, resetBillStatus, printKOT, printCustomer],
+    [cart, createBill, updateBill, settings, completeOrder, setBillStatus, resetBillStatus, printKOT, printCustomer, sub, disc, tot, discountType, discountValue, customerName, customerPhone, orderType, tableNumber, paymentMethod],
   );
 
   const cartPanelProps = {

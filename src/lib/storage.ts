@@ -143,7 +143,7 @@ export function logout(): void {
 // ---- Daily Report Helpers ----
 export function generateDailyReport(): import('@/types').DailyReport {
   const today = getToday();
-  const bills = getTodayBills().filter((b) => b.createdAt.startsWith(today));
+  const bills = getTodayBills().filter((b) => b.createdAt.startsWith(today) && b.status === 'COMPLETED');
 
   const itemsSold: Record<string, number> = {};
   const itemsRevenue: Record<string, number> = {};

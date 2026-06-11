@@ -19,6 +19,7 @@ const fadeUp = {
 
 export default function ReportsView() {
   const { report, generateReport, bills, settings, loadBills } = useStore();
+  const completedBills = bills.filter(b => b.status === 'COMPLETED');
 
   useEffect(() => {
     generateReport();
@@ -155,8 +156,8 @@ export default function ReportsView() {
 
       {/* Today's Bills List */}
       <motion.div variants={fadeUp} className="glass-card p-5">
-        <h3 className="section-title mb-4">Today&apos;s Bills ({bills.length})</h3>
-        {bills.length > 0 ? (
+        <h3 className="section-title mb-4">Today&apos;s Bills ({completedBills.length})</h3>
+        {completedBills.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -170,7 +171,7 @@ export default function ReportsView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.04]">
-                {[...bills].reverse().map((bill) => (
+                {[...completedBills].reverse().map((bill) => (
                   <tr key={bill.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-2.5 pr-4 font-mono text-primary-400 font-semibold">#{bill.billNumber}</td>
                     <td className="py-2.5 pr-4 text-white/70">{bill.customerName || '—'}</td>
