@@ -163,7 +163,6 @@ export default function ReportsView() {
               <thead>
                 <tr className="text-white/40 text-xs uppercase border-b border-white/[0.06]">
                   <th className="text-left py-2 pr-4">#</th>
-                  <th className="text-left py-2 pr-4">Customer</th>
                   <th className="text-left py-2 pr-4">Items</th>
                   <th className="text-right py-2 pr-4">Total</th>
                   <th className="text-center py-2 pr-4">Payment</th>
@@ -174,7 +173,6 @@ export default function ReportsView() {
                 {[...completedBills].reverse().map((bill) => (
                   <tr key={bill.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-2.5 pr-4 font-mono text-primary-400 font-semibold">#{bill.billNumber}</td>
-                    <td className="py-2.5 pr-4 text-white/70">{bill.customerName || '—'}</td>
                     <td className="py-2.5 pr-4 text-white/50">{bill.items.length} items</td>
                     <td className="py-2.5 pr-4 text-right font-semibold text-white">
                       {settings.currency}{bill.total}

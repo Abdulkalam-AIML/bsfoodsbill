@@ -177,7 +177,6 @@ function TableGrid({
 export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => void }) {
   const {
     menu, cart, addToCart, removeFromCart, updateQuantity, clearCart,
-    customerName, setCustomerName, customerPhone, setCustomerPhone,
     orderType, setOrderType, tableNumber, setTableNumber,
     paymentMethod, setPaymentMethod,
     discountType, setDiscountType, discountValue, setDiscountValue,
@@ -255,8 +254,6 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
           discountType,
           discountValue,
           total: tot,
-          customerName,
-          customerPhone,
           orderType,
           tableNumber,
           paymentMethod,
@@ -291,11 +288,7 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
       }
 
       if (whatsapp) {
-        if (bill.customerPhone) {
-          sendWhatsApp(bill.customerPhone, bill, settings);
-        } else {
-          shareWhatsAppNoNumber(bill, settings);
-        }
+        shareWhatsAppNoNumber(bill, settings);
         setBillStatus(undefined, true);
         useStore.getState().updateBillStatus(bill.id, undefined, true);
         toast.success('WhatsApp bill shared');
@@ -318,14 +311,12 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
         });
       }
     },
-    [cart, createBill, updateBill, settings, completeOrder, setBillStatus, resetBillStatus, printKOT, printCustomer, sub, disc, tot, discountType, discountValue, customerName, customerPhone, orderType, tableNumber, paymentMethod],
+    [cart, createBill, updateBill, settings, completeOrder, setBillStatus, resetBillStatus, printKOT, printCustomer, sub, disc, tot, discountType, discountValue, orderType, tableNumber, paymentMethod],
   );
 
   const cartPanelProps = {
     cart, updateQuantity, removeFromCart, clearCart,
     sub, disc, tot, settings,
-    customerName, setCustomerName,
-    customerPhone, setCustomerPhone,
     orderType, setOrderType,
     tableNumber, setTableNumber,
     paymentMethod, setPaymentMethod,
@@ -494,10 +485,6 @@ interface CartPanelProps {
   disc: number;
   tot: number;
   settings: import('@/lib/store').AppState['settings'];
-  customerName: string;
-  setCustomerName: (v: string) => void;
-  customerPhone: string;
-  setCustomerPhone: (v: string) => void;
   orderType: 'dine-in' | 'takeaway';
   setOrderType: (v: 'dine-in' | 'takeaway') => void;
   tableNumber: string;
@@ -520,7 +507,6 @@ interface CartPanelProps {
 function CartPanelContent({
   cart, updateQuantity, removeFromCart, clearCart,
   sub, disc, tot, settings,
-  customerName, setCustomerName, customerPhone, setCustomerPhone,
   orderType, setOrderType, tableNumber, setTableNumber,
   paymentMethod, setPaymentMethod,
   discountType, setDiscountType, discountValue, setDiscountValue,
@@ -585,11 +571,6 @@ function CartPanelContent({
                     {t === 'dine-in' ? '🍽️ Dine-In' : '📦 Takeaway'}
                   </button>
                 ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <input placeholder="Customer Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="glass-input px-3 py-2 text-xs" />
-                <input placeholder="Phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="glass-input px-3 py-2 text-xs" />
               </div>
 
               <div className="flex gap-1.5">

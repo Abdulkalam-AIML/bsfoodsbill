@@ -48,16 +48,12 @@ export interface AppState {
   clearCart: () => void;
 
   // Order details
-  customerName: string;
-  customerPhone: string;
   orderType: 'dine-in' | 'takeaway';
   tableNumber: string;
   orderNotes: string;
   paymentMethod: 'cash' | 'upi' | 'card';
   discountType: 'percentage' | 'fixed';
   discountValue: number;
-  setCustomerName: (name: string) => void;
-  setCustomerPhone: (phone: string) => void;
   setOrderType: (type: 'dine-in' | 'takeaway') => void;
   setTableNumber: (num: string) => void;
   setOrderNotes: (notes: string) => void;
@@ -207,8 +203,6 @@ export const useStore = create<AppState>((set, get) => ({
   clearCart: () => {
     set({
       cart: [],
-      customerName: '',
-      customerPhone: '',
       orderType: 'dine-in',
       tableNumber: '',
       orderNotes: '',
@@ -221,16 +215,12 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   // ---- Order details ----
-  customerName: '',
-  customerPhone: '',
   orderType: 'dine-in',
   tableNumber: '',
   orderNotes: '',
   paymentMethod: 'cash',
   discountType: 'percentage',
   discountValue: 0,
-  setCustomerName: (name) => set({ customerName: name }),
-  setCustomerPhone: (phone) => set({ customerPhone: phone }),
   setOrderType: (type) => set({ orderType: type }),
   setTableNumber: (num) => set({ tableNumber: num }),
   setOrderNotes: (notes) => set({ orderNotes: notes }),
@@ -272,8 +262,6 @@ export const useStore = create<AppState>((set, get) => ({
       discountType: state.discountType,
       discountValue: state.discountValue,
       total: state.total(),
-      customerName: state.customerName,
-      customerPhone: state.customerPhone,
       orderType: state.orderType,
       tableNumber: state.tableNumber,
       orderNotes: state.orderNotes,
@@ -355,8 +343,6 @@ export const useStore = create<AppState>((set, get) => ({
     id: `table-${i + 1}`,
     number: i + 1,
     items: [],
-    customerName: '',
-    customerPhone: '',
     orderType: 'dine-in',
     orderNotes: '',
     status: 'available',
@@ -374,8 +360,6 @@ export const useStore = create<AppState>((set, get) => ({
         ? {
             ...t,
             items: state.cart,
-            customerName: state.customerName,
-            customerPhone: state.customerPhone,
             orderType: state.orderType,
             orderNotes: state.orderNotes,
             status: 'occupied' as const,
@@ -398,8 +382,6 @@ export const useStore = create<AppState>((set, get) => ({
 
     set({
       cart: table.items,
-      customerName: table.customerName,
-      customerPhone: table.customerPhone,
       orderType: table.orderType,
       tableNumber: table.number.toString(),
       orderNotes: table.orderNotes,
@@ -416,8 +398,6 @@ export const useStore = create<AppState>((set, get) => ({
         ? {
             ...t,
             items: [],
-            customerName: '',
-            customerPhone: '',
             status: 'available' as const,
             startedAt: undefined,
             lastUpdated: undefined,

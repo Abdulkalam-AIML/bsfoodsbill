@@ -82,6 +82,27 @@ export const DEFAULT_MENU: MenuItem[] = [
   { id:'ext-30',  name:'Extra Charge - ₹30', category:'Extras', price:30,  image:'/menu/extras/extra.jpg',     imageAlt:'Extra 30',        description:'Additional custom charge of ₹30',  available:true, bestSeller:false, badge:'➕ Extra' },
 
   // ─── UTILITY ───
-  { id:'ut-wb',   name:'Water Bottle',       category:'Utility', price:10, image:'/menu/utilities/water-bottle.webp', imageAlt:'Water Bottle', description:'Chilled packaged drinking water', available:true, bestSeller:false, badge:'💧 Utility' },
+  { id:'ut-rk500', name:'Royal Kissan 500ml', category:'Utility', price:10, image:'/menu/utilities/water-bottle.webp', imageAlt:'Royal Kissan 500ml', description:'Royal Kissan 500ml Water', available:true, bestSeller:false, badge:'💧 Utility' },
+  { id:'ut-rk1l', name:'Royal Kissan 1L', category:'Utility', price:20, image:'/menu/utilities/water-bottle.webp', imageAlt:'Royal Kissan 1L', description:'Royal Kissan 1L Water', available:true, bestSeller:false, badge:'💧 Utility' },
+
+  // ─── BIRYANI ───
+  { id:'bir-1', name:'Chicken Dum Biryani', category:'Biryani', price:149, image:'/fallback-food.jpg', imageAlt:'Chicken Dum Biryani', description:'Chicken Dum Biryani', available:true, bestSeller:true },
+  { id:'bir-2', name:'Chicken Dum Biryani Full', category:'Biryani', price:249, image:'/fallback-food.jpg', imageAlt:'Chicken Dum Biryani Full', description:'Chicken Dum Biryani Full', available:true, bestSeller:false },
+  { id:'bir-3', name:'Chicken Fry Piece Biryani', category:'Biryani', price:159, image:'/fallback-food.jpg', imageAlt:'Chicken Fry Piece Biryani', description:'Chicken Fry Piece Biryani', available:true, bestSeller:true },
+  { id:'bir-4', name:'Chicken Fry Piece Biryani Full', category:'Biryani', price:279, image:'/fallback-food.jpg', imageAlt:'Chicken Fry Piece Biryani Full', description:'Chicken Fry Piece Biryani Full', available:true, bestSeller:false },
+  { id:'bir-5', name:'Egg Biryani', category:'Biryani', price:129, image:'/fallback-food.jpg', imageAlt:'Egg Biryani', description:'Egg Biryani', available:true, bestSeller:false },
+  { id:'bir-6', name:'Fish Biryani', category:'Biryani', price:219, image:'/fallback-food.jpg', imageAlt:'Fish Biryani', description:'Fish Biryani', available:true, bestSeller:false },
+  { id:'bir-7', name:'Prawns Biryani', category:'Biryani', price:239, image:'/fallback-food.jpg', imageAlt:'Prawns Biryani', description:'Prawns Biryani', available:true, bestSeller:false },
+  { id:'bir-8', name:'Chicken Fried Rice', category:'Biryani', price:169, image:'/fallback-food.jpg', imageAlt:'Chicken Fried Rice', description:'Chicken Fried Rice', available:true, bestSeller:false },
+
+  // ─── BEVERAGES ───
+  { id:'bev-1', name:'Thumbs Up 300ml', category:'Beverages', price:30, image:'/fallback-food.jpg', imageAlt:'Thumbs Up 300ml', description:'Thumbs Up 300ml', available:true, bestSeller:false },
+  { id:'bev-2', name:'Thumbs Up 1L', category:'Beverages', price:50, image:'/fallback-food.jpg', imageAlt:'Thumbs Up 1L', description:'Thumbs Up 1L', available:true, bestSeller:false },
+
+  // ─── FAMILY PACKS ───
+  { id:'fp-1', name:'Chicken Dum Family Pack', category:'Family Packs', price:499, image:'/fallback-food.jpg', imageAlt:'Chicken Dum Family Pack', description:'Chicken Dum Family Pack', available:true, bestSeller:true },
+  { id:'fp-2', name:'Chicken Fry Piece Family Pack', category:'Family Packs', price:539, image:'/fallback-food.jpg', imageAlt:'Chicken Fry Piece Family Pack', description:'Chicken Fry Piece Family Pack', available:true, bestSeller:false },
+  { id:'fp-3', name:'Fish Family Pack', category:'Family Packs', price:619, image:'/fallback-food.jpg', imageAlt:'Fish Family Pack', description:'Fish Family Pack', available:true, bestSeller:false },
+  { id:'fp-4', name:'Prawns Family Pack', category:'Family Packs', price:719, image:'/fallback-food.jpg', imageAlt:'Prawns Family Pack', description:'Prawns Family Pack', available:true, bestSeller:false },
 ];
 

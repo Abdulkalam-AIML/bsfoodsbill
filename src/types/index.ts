@@ -30,8 +30,6 @@ export interface Bill {
   discountType: 'percentage' | 'fixed';
   discountValue: number;
   total: number;
-  customerName: string;
-  customerPhone: string;
   orderType: 'dine-in' | 'takeaway';
   tableNumber: string;
   orderNotes: string;
@@ -77,9 +75,11 @@ export interface CafeSettings {
 }
 
 export type MenuCategory =
+  | 'Biryani'
+  | 'Family Packs'
+  | 'Beverages'
   | 'Mocktails'
   | 'Desserts & Ice Cream Scoops'
-  | 'Chai & Juice'
   | 'Pizza'
   | 'Sandwich & Wraps'
   | 'Snacks & Burgers'
@@ -93,8 +93,6 @@ export type TableState =
       id: string;
       number: number;
       items: CartItem[];
-      customerName: string;
-      customerPhone: string;
       orderType: 'dine-in' | 'takeaway';
       orderNotes: string;
       status: 'available' | 'occupied';
@@ -104,9 +102,11 @@ export type TableState =
     };
 
 export const MENU_CATEGORIES: MenuCategory[] = [
+  'Biryani',
+  'Family Packs',
+  'Beverages',
   'Mocktails',
   'Desserts & Ice Cream Scoops',
-  'Chai & Juice',
   'Pizza',
   'Sandwich & Wraps',
   'Snacks & Burgers',

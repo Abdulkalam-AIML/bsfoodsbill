@@ -168,9 +168,6 @@ export function generateThermalReceipt(bill: Bill, settings?: CafeSettings): jsP
   // Double rule
   lines.push('==========================================');
   
-  // Name
-  lines.push(`Name: ${bill.customerName || ''}`);
-  
   // Single rule
   lines.push('------------------------------------------');
   
@@ -569,9 +566,6 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
       ${s.phone ? `<div style="text-align: center; font-size: 11px; margin: 1px 0;">Mo: ${s.phone}</div>` : ''}
       
       <div class="receipt-double-line"></div>
-      
-      <!-- Customer Info -->
-      <div class="bold-text" style="margin: 2px 0; font-size: 11px;">Name: ${bill.customerName || ''}</div>
       
       <div class="receipt-single-line"></div>
       
