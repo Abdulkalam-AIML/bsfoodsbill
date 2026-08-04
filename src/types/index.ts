@@ -13,6 +13,8 @@ export interface MenuItem {
   available: boolean;
   bestSeller: boolean;
   badge?: string;       // e.g. "Normal ₹89 / Thick ₹149"
+  itemType?: 'Item' | 'Combo';
+  contains?: string[];
 }
 
 export interface CartItem extends MenuItem {
@@ -43,6 +45,10 @@ export interface Bill {
   kotPrinted?: boolean;
   billPrinted?: boolean;
   reportAdded?: boolean;
+  deliveryCharge?: number;
+  packingCharge?: number;
+  extraCharge?: number;
+  grandTotal?: number;
 }
 
 export interface DailyReport {
@@ -53,6 +59,7 @@ export interface DailyReport {
   totalRevenue: number;
   itemsSold: Record<string, number>;
   itemsRevenue: Record<string, number>;
+  categorySales?: Record<string, { qty: number; revenue: number }>;
   paymentMethods: Record<string, number>;
   printCount: number;
   whatsappCount: number;
@@ -60,6 +67,10 @@ export interface DailyReport {
   hourlyData: Record<string, number>;
   kitchenTicketsPrinted: number;
   customerBillsPrinted: number;
+  totalDeliveryCharges?: number;
+  totalPackingCharges?: number;
+  totalExtraCharges?: number;
+  totalFoodSales?: number;
 }
 
 export interface CafeSettings {
@@ -75,18 +86,19 @@ export interface CafeSettings {
 }
 
 export type MenuCategory =
-  | 'Biryani'
-  | 'Family Packs'
-  | 'Beverages'
+  | 'Pizza'
+  | 'Snacks'
+  | 'Sandwich'
+  | 'Burgers'
   | 'Mocktails'
   | 'Desserts & Ice Cream Scoops'
-  | 'Pizza'
-  | 'Sandwich & Wraps'
-  | 'Snacks & Burgers'
   | 'Thick Shakes & Milk Shakes'
   | 'Offers'
   | 'Extras'
-  | 'Utility';
+  | 'Utility'
+  | 'Biryani'
+  | 'Beverages'
+  | 'Combo Blasters';
 
 export type TableState =
   | {
@@ -99,21 +111,26 @@ export type TableState =
       startedAt?: string;
       lastUpdated?: string;
       currentBillId?: string | null;
+      deliveryCharge?: number;
+      packingCharge?: number;
+      extraCharge?: number;
+      discount?: number;
     };
 
 export const MENU_CATEGORIES: MenuCategory[] = [
-  'Biryani',
-  'Family Packs',
-  'Beverages',
+  'Pizza',
+  'Snacks',
+  'Sandwich',
+  'Burgers',
   'Mocktails',
   'Desserts & Ice Cream Scoops',
-  'Pizza',
-  'Sandwich & Wraps',
-  'Snacks & Burgers',
   'Thick Shakes & Milk Shakes',
   'Offers',
   'Extras',
   'Utility',
+  'Biryani',
+  'Beverages',
+  'Combo Blasters',
 ];
 
 export const DEFAULT_SETTINGS: CafeSettings = {

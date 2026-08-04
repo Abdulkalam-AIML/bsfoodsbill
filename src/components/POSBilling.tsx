@@ -5,18 +5,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, ShoppingCart, Plus, Minus, Trash2, User, Phone,
   Hash, FileText, Printer, MessageCircle,
-  UtensilsCrossed, Percent, X, ArrowLeft, ImageOff, CheckCircle2
+  UtensilsCrossed, Percent, X, ArrowLeft, ImageOff, CheckCircle2, Info
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { downloadThermalReceipt, downloadKOTReceipt, printBill } from '@/lib/pdf';
 import { sendWhatsApp, shareWhatsAppNoNumber } from '@/lib/whatsapp';
 import { toast } from 'sonner';
 import type { MenuItem } from '@/types';
+import { MENU_CATEGORIES } from '@/types';
 
 import Image from 'next/image';
 
 /* ─────────── Optimized image card with Next.js ─────────── */
-function MenuItemImage({ src, alt }: { src: string; alt: string }) {
+function MenuItemImage({ src, alt, isCombo }: { src: string; alt: string; isCombo?: boolean }) {
   const [imgSrc, setImgSrc] = useState(src);
   const [loaded, setLoaded] = useState(false);
 
@@ -34,10 +35,96 @@ function MenuItemImage({ src, alt }: { src: string; alt: string }) {
           loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
         }`}
         onLoad={() => setLoaded(true)}
-        onError={() => setImgSrc('/fallback-food.jpg')}
+        onError={() => setImgSrc(isCombo ? '/logo.png' : '/fallback-food.jpg')}
         loading="lazy"
         unoptimized={false}
       />
+    </div>
+  );
+}
+
+/* ─────────── Combo Details Modal ─────────── */
+function ComboDetailsModal({
+  item,
+  currency,
+  onClose,
+  onAdd,
+}: {
+  item: MenuItem;
+  currency: string;
+  onClose: () => void;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="glass-card max-w-md w-full p-6 relative border border-primary-500/30 bg-navy-900/95 shadow-2xl rounded-2xl"
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Logo and Header */}
+        <div className="flex items-center gap-4 mb-4 pb-3 border-b border-white/10">
+          <div className="w-14 h-14 rounded-xl bg-white/5 p-1.5 flex items-center justify-center border border-white/10 shrink-0">
+            <Image
+              src="/logo.png"
+              alt="BS Foods Logo"
+              width={56}
+              height={56}
+              className="object-contain max-h-full"
+            />
+          </div>
+          <div>
+            <h3 className="font-display text-lg font-bold text-white leading-snug">{item.name}</h3>
+            <p className="text-xs text-primary-400 font-semibold mt-0.5">{item.category}</p>
+            <p className="text-sm font-bold text-emerald-400 mt-1">{currency}{item.price}</p>
+          </div>
+        </div>
+
+        {/* Contains Section */}
+        <div className="space-y-2 mb-6">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-white/50">Contains</h4>
+          <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 space-y-2">
+            {item.contains && item.contains.length > 0 ? (
+              item.contains.map((c, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-xs text-white/90 font-medium">
+                  <span className="text-primary-400 font-bold select-none">•</span>
+                  <span>{c}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-white/60 italic">{item.description}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-all"
+          >
+            Close
+          </button>
+          <button
+            onClick={() => {
+              onAdd();
+              onClose();
+            }}
+            aria-label={`Add ${item.name} to order`}
+            className="flex-1 btn-primary py-2.5 text-xs font-bold justify-center"
+          >
+            <Plus className="w-4 h-4" /> Add to Order ({currency}{item.price})
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -49,27 +136,39 @@ function MenuCard({
   qty,
   currency,
   onAdd,
+  onInfo,
 }: {
   item: MenuItem;
   inCart: boolean;
   qty: number;
   currency: string;
   onAdd: () => void;
+  onInfo?: (item: MenuItem) => void;
 }) {
+  const isCombo = item.category === 'Combo Blasters' || item.itemType === 'Combo';
+
   return (
-    <motion.button
-      whileTap={{ scale: 0.96 }}
-      onClick={onAdd}
+    <motion.div
+      whileTap={{ scale: 0.97 }}
       className={`relative flex flex-col glass-card overflow-hidden text-left transition-all duration-200 group
         hover:border-primary-500/40 hover:-translate-y-0.5 hover:shadow-card-hover
         ${inCart ? 'border-primary-500/50 bg-primary-500/[0.05] shadow-neon' : ''}
       `}
     >
       {/* Image */}
-      <MenuItemImage src={item.image} alt={item.imageAlt || item.name} />
+      <div onClick={onAdd} className="cursor-pointer relative">
+        <MenuItemImage src={item.image} alt={item.imageAlt || item.name} isCombo={isCombo} />
+
+        {/* Logo Badge for Combos */}
+        {isCombo && (
+          <div className="absolute top-2 left-2 w-6 h-6 rounded-lg bg-navy-950/80 p-0.5 backdrop-blur-md border border-white/20 flex items-center justify-center z-10">
+            <Image src="/logo.png" alt="BS Logo" width={20} height={20} className="object-contain" />
+          </div>
+        )}
+      </div>
 
       {/* Badges */}
-      <div className="absolute top-2 left-2 flex gap-1 flex-wrap">
+      <div className="absolute top-2 right-2 flex gap-1 flex-wrap z-10">
         {item.bestSeller && (
           <span className="badge badge-orange text-[9px] px-1.5 py-0.5 backdrop-blur-sm">★ Best</span>
         )}
@@ -83,7 +182,7 @@ function MenuCard({
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary-500 text-[11px] font-bold text-white flex items-center justify-center shadow-neon"
+          className="absolute top-2 left-2 w-6 h-6 rounded-full bg-primary-500 text-[11px] font-bold text-white flex items-center justify-center shadow-neon z-20"
         >
           {qty}
         </motion.div>
@@ -91,22 +190,43 @@ function MenuCard({
 
       {/* Info */}
       <div className="p-3 flex flex-col gap-1 flex-1">
-        <p className="text-xs font-semibold text-white leading-tight line-clamp-2 group-hover:text-primary-200 transition-colors">
-          {item.name}
-        </p>
+        <div className="flex items-start justify-between gap-1">
+          <p
+            onClick={onAdd}
+            className="text-xs font-semibold text-white leading-tight line-clamp-2 group-hover:text-primary-200 transition-colors cursor-pointer"
+          >
+            {item.name}
+          </p>
+          {(isCombo || item.contains) && onInfo && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfo(item);
+              }}
+              title="View Combo Details"
+              className="p-1 rounded-lg bg-white/5 hover:bg-white/15 text-white/50 hover:text-white transition-all shrink-0 mt-0.5"
+            >
+              <Info className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
         <p className="text-[10px] text-white/35 truncate">{item.category}</p>
         <div className="flex items-center justify-between mt-auto pt-1">
           <span className="text-sm font-bold text-primary-400">{currency}{item.price}</span>
-          <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
-            inCart
-              ? 'bg-primary-500 text-white'
-              : 'bg-white/[0.06] text-white/40 group-hover:bg-primary-500/20 group-hover:text-primary-400'
-          }`}>
+          <button
+            onClick={onAdd}
+            className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+              inCart
+                ? 'bg-primary-500 text-white'
+                : 'bg-white/[0.06] text-white/40 group-hover:bg-primary-500/20 group-hover:text-primary-400'
+            }`}
+          >
             <Plus className="w-3.5 h-3.5" />
-          </div>
+          </button>
         </div>
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
 
@@ -183,12 +303,15 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
     subtotal, discountAmount, total, createBill, updateBill, settings, userRole,
     searchQuery, setSearchQuery, activeCategory, setActiveCategory,
     tables, holdTable, resumeTable, clearTable, completeOrder, loadTables,
-    billPrinted, billWhatsappSent, setBillStatus, resetBillStatus
+    billPrinted, billWhatsappSent, setBillStatus, resetBillStatus,
+    deliveryCharge, setDeliveryCharge, packingCharge, setPackingCharge,
+    extraCharge, setExtraCharge, cartDiscount, setCartDiscount
   } = useStore();
 
   const [showCart, setShowCart] = useState(false);
   const [printKOT, setPrintKOT] = useState(true);
   const [printCustomer, setPrintCustomer] = useState(true);
+  const [selectedComboItem, setSelectedComboItem] = useState<MenuItem | null>(null);
 
   // Initialize tables on mount
   useState(() => {
@@ -203,22 +326,31 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
     resumeTable(num);
   };
 
-  // Categories from live menu
+  // Categories from live menu ordered according to MENU_CATEGORIES
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(menu.map((m) => m.category)));
-    return ['All', ...cats];
+    const presentCats = new Set(menu.map((m) => m.category));
+    const sorted = MENU_CATEGORIES.filter((c) => presentCats.has(c));
+    Array.from(presentCats).forEach((c) => {
+      if (!sorted.includes(c as any)) sorted.push(c as any);
+    });
+    return ['All', ...sorted];
   }, [menu]);
 
-  // Filtered menu
+  // Filtered menu with enhanced search for combos and sub-items
   const filteredMenu = useMemo(() => {
     let items = menu.filter((m) => m.available);
     if (activeCategory !== 'All') {
       items = items.filter((m) => m.category === activeCategory);
     }
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
       items = items.filter(
-        (m) => m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q),
+        (m) =>
+          m.name.toLowerCase().includes(q) ||
+          m.category.toLowerCase().includes(q) ||
+          (m.description && m.description.toLowerCase().includes(q)) ||
+          (m.contains && m.contains.some((c) => c.toLowerCase().includes(q))) ||
+          (m.itemType && m.itemType.toLowerCase().includes(q))
       );
     }
     return items;
@@ -330,7 +462,11 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
       if (isNaN(num)) { toast.error('Please select a table first!'); return; }
       holdTable(num);
       toast.success(`Bill held for Table ${num}`);
-    }
+    },
+    deliveryCharge, setDeliveryCharge,
+    packingCharge, setPackingCharge,
+    extraCharge, setExtraCharge,
+    cartDiscount, setCartDiscount,
   };
 
   return (
@@ -422,6 +558,7 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
                       addToCart(item);
                       toast.success(`Added!`, { duration: 800 });
                     }}
+                    onInfo={(itm) => setSelectedComboItem(itm)}
                   />
                 );
               })}
@@ -435,6 +572,21 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
             )}
           </div>
         </div>
+
+        {/* Combo Details Modal */}
+        <AnimatePresence>
+          {selectedComboItem && (
+            <ComboDetailsModal
+              item={selectedComboItem}
+              currency={settings.currency}
+              onClose={() => setSelectedComboItem(null)}
+              onAdd={() => {
+                addToCart(selectedComboItem);
+                toast.success(`Added ${selectedComboItem.name}!`);
+              }}
+            />
+          )}
+        </AnimatePresence>
 
         {/* ── Right: Cart (Desktop) ── */}
         <div className="hidden lg:flex w-[360px] flex-col border-l border-white/[0.06] bg-white/[0.01] shrink-0">
@@ -502,6 +654,14 @@ interface CartPanelProps {
   printCustomer: boolean;
   setPrintCustomer: (v: boolean) => void;
   onHold: () => void;
+  deliveryCharge: number;
+  setDeliveryCharge: (v: number) => void;
+  packingCharge: number;
+  setPackingCharge: (v: number) => void;
+  extraCharge: number;
+  setExtraCharge: (v: number) => void;
+  cartDiscount: number;
+  setCartDiscount: (v: number) => void;
 }
 
 function CartPanelContent({
@@ -510,7 +670,9 @@ function CartPanelContent({
   orderType, setOrderType, tableNumber, setTableNumber,
   paymentMethod, setPaymentMethod,
   discountType, setDiscountType, discountValue, setDiscountValue,
-  userRole, onFinalize, printKOT, setPrintKOT, printCustomer, setPrintCustomer, onHold
+  userRole, onFinalize, printKOT, setPrintKOT, printCustomer, setPrintCustomer, onHold,
+  deliveryCharge, setDeliveryCharge, packingCharge, setPackingCharge,
+  extraCharge, setExtraCharge, cartDiscount, setCartDiscount
 }: CartPanelProps) {
   return (
     <div className="flex flex-col h-full">
@@ -585,6 +747,118 @@ function CartPanelContent({
                 ))}
               </div>
 
+              {/* Additional Charges Card */}
+              <div className="p-3 bg-white/[0.02] border border-white/[0.06] rounded-xl space-y-3 mt-3">
+                <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-wider">
+                  Additional Charges
+                </h4>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-white/50 w-28 shrink-0">Delivery Charge</span>
+                    <div className="relative flex-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-white/30">₹</span>
+                      <input
+                        type="number"
+                        step="any"
+                        min={0}
+                        value={deliveryCharge === 0 ? '' : deliveryCharge}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') {
+                            setDeliveryCharge(0);
+                          } else {
+                            const num = parseFloat(val);
+                            if (!isNaN(num) && num >= 0 && num <= 10000) {
+                              setDeliveryCharge(num);
+                            }
+                          }
+                        }}
+                        placeholder="0.00"
+                        className="glass-input py-1.5 pl-6 text-xs w-full text-right"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-white/50 w-28 shrink-0">Packing Charge</span>
+                    <div className="relative flex-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-white/30">₹</span>
+                      <input
+                        type="number"
+                        step="any"
+                        min={0}
+                        value={packingCharge === 0 ? '' : packingCharge}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') {
+                            setPackingCharge(0);
+                          } else {
+                            const num = parseFloat(val);
+                            if (!isNaN(num) && num >= 0 && num <= 10000) {
+                              setPackingCharge(num);
+                            }
+                          }
+                        }}
+                        placeholder="0.00"
+                        className="glass-input py-1.5 pl-6 text-xs w-full text-right"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-white/50 w-28 shrink-0">Extra Charge</span>
+                    <div className="relative flex-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-white/30">₹</span>
+                      <input
+                        type="number"
+                        step="any"
+                        min={0}
+                        value={extraCharge === 0 ? '' : extraCharge}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') {
+                            setExtraCharge(0);
+                          } else {
+                            const num = parseFloat(val);
+                            if (!isNaN(num) && num >= 0 && num <= 10000) {
+                              setExtraCharge(num);
+                            }
+                          }
+                        }}
+                        placeholder="0.00"
+                        className="glass-input py-1.5 pl-6 text-xs w-full text-right"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-white/50 w-28 shrink-0">Discount</span>
+                    <div className="relative flex-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-white/30">₹</span>
+                      <input
+                        type="number"
+                        step="any"
+                        value={cartDiscount === 0 ? '' : cartDiscount}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') {
+                            setCartDiscount(0);
+                          } else {
+                            const num = parseFloat(val);
+                            if (!isNaN(num) && num >= -10000 && num <= 10000) {
+                              setCartDiscount(num);
+                            }
+                          }
+                        }}
+                        placeholder="0.00"
+                        className="glass-input py-1.5 pl-6 text-xs w-full text-right"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {userRole === 'owner' && (
                 <div className="space-y-2">
                   <div className="flex gap-2 items-center">
@@ -649,14 +923,32 @@ function CartPanelContent({
               <span>Subtotal</span>
               <span>{settings.currency}{sub.toLocaleString('en-IN')}</span>
             </div>
-            {disc > 0 && (
+            {deliveryCharge > 0 && (
+              <div className="flex justify-between text-white/50">
+                <span>Delivery Charge</span>
+                <span>{settings.currency}{deliveryCharge.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+            {packingCharge > 0 && (
+              <div className="flex justify-between text-white/50">
+                <span>Packing Charge</span>
+                <span>{settings.currency}{packingCharge.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+            {extraCharge > 0 && (
+              <div className="flex justify-between text-white/50">
+                <span>Extra Charge</span>
+                <span>{settings.currency}{extraCharge.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+            {disc !== 0 && (
               <div className="flex justify-between text-red-400 text-sm">
                 <span>Discount</span>
-                <span>-{settings.currency}{disc.toLocaleString('en-IN')}</span>
+                <span>{disc < 0 ? '+' : '-'}{settings.currency}{Math.abs(disc).toLocaleString('en-IN')}</span>
               </div>
             )}
             <div className="flex justify-between text-white font-display text-lg font-bold pt-1.5 border-t border-white/[0.06]">
-              <span>Total</span>
+              <span>Grand Total</span>
               <span className="text-primary-400">{settings.currency}{tot.toLocaleString('en-IN')}</span>
             </div>
           </div>

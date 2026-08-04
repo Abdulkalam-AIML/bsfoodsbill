@@ -22,6 +22,8 @@ interface MenuForm {
   description: string;
   bestSeller: boolean;
   badge: string;
+  itemType: string;
+  contains: string;
 }
 
 const EMPTY_FORM: MenuForm = {
@@ -32,12 +34,14 @@ const EMPTY_FORM: MenuForm = {
   description: '',
   bestSeller: false,
   badge: '',
+  itemType: 'Item',
+  contains: '',
 };
 
 import Image from 'next/image';
 
 /* ── Optimized image with Next.js and fallback ── */
-function ItemImage({ src, alt, className = '' }: { src: string; alt: string; className?: string }) {
+function ItemImage({ src, alt, className = '', isCombo = false }: { src: string; alt: string; className?: string; isCombo?: boolean }) {
   const [imgSrc, setImgSrc] = useState(src);
   const [loaded, setLoaded] = useState(false);
 
@@ -51,7 +55,7 @@ function ItemImage({ src, alt, className = '' }: { src: string; alt: string; cla
         height={300}
         loading="lazy"
         onLoad={() => setLoaded(true)}
-        onError={() => setImgSrc('/fallback-food.jpg')}
+        onError={() => setImgSrc(isCombo ? '/logo.png' : '/fallback-food.jpg')}
         className={`w-full h-full object-cover transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         unoptimized={false}
       />
@@ -69,8 +73,12 @@ export default function MenuManagement() {
   const [previewError, setPreviewError] = useState(false);
 
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(menu.map((m) => m.category)));
-    return ['All', ...cats];
+    const presentCats = new Set(menu.map((m) => m.category));
+    const sorted = MENU_CATEGORIES.filter((c) => presentCats.has(c));
+    Array.from(presentCats).forEach((c) => {
+      if (!sorted.includes(c as any)) sorted.push(c as any);
+    });
+    return ['All', ...sorted];
   }, [menu]);
 
   const filtered = useMemo(() => {
@@ -78,7 +86,12 @@ export default function MenuManagement() {
     if (filterCat !== 'All') items = items.filter((m) => m.category === filterCat);
     if (search) {
       const q = search.toLowerCase();
-      items = items.filter((m) => m.name.toLowerCase().includes(q));
+      items = items.filter(
+        (m) =>
+          m.name.toLowerCase().includes(q) ||
+          m.category.toLowerCase().includes(q) ||
+          (m.contains && m.contains.some((c) => c.toLowerCase().includes(q)))
+      );
     }
     return items;
   }, [menu, filterCat, search]);
@@ -99,6 +112,8 @@ export default function MenuManagement() {
       description: item.description,
       bestSeller: item.bestSeller,
       badge: item.badge || '',
+      itemType: item.itemType || (item.category === 'Combo Blasters' ? 'Combo' : 'Item'),
+      contains: item.contains ? item.contains.join(', ') : '',
     });
     setEditId(item.id);
     setPreviewError(false);
@@ -110,15 +125,22 @@ export default function MenuManagement() {
       toast.error('Name and price are required');
       return;
     }
+    const isComboCat = form.category === 'Combo Blasters';
+    const parsedContains = form.contains
+      ? form.contains.split(',').map((c) => c.trim()).filter(Boolean)
+      : undefined;
+
     if (editId) {
       updateMenuItem(editId, {
         name: form.name,
         category: form.category,
         price: Number(form.price),
-        image: form.image,
+        image: form.image || (isComboCat ? '/logo.png' : '/fallback-food.jpg'),
         description: form.description,
         bestSeller: form.bestSeller,
         badge: form.badge || undefined,
+        itemType: (isComboCat || form.itemType === 'Combo') ? 'Combo' : 'Item',
+        contains: parsedContains,
       });
       toast.success('Item updated!');
     } else {
@@ -127,11 +149,13 @@ export default function MenuManagement() {
         name: form.name,
         category: form.category,
         price: Number(form.price),
-        image: form.image,
+        image: form.image || (isComboCat ? '/logo.png' : '/fallback-food.jpg'),
         description: form.description,
         available: true,
         bestSeller: form.bestSeller,
         badge: form.badge || undefined,
+        itemType: (isComboCat || form.itemType === 'Combo') ? 'Combo' : 'Item',
+        contains: parsedContains,
       });
       toast.success('Item added!');
     }
@@ -188,61 +212,78 @@ export default function MenuManagement() {
 
       {/* Menu Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {filtered.map((item) => (
-          <motion.div key={item.id} variants={fadeUp}
-            className={`glass-card overflow-hidden flex flex-col transition-all duration-200 ${!item.available ? 'opacity-50' : ''}`}>
-            {/* Image */}
-            <div className="relative">
-              <ItemImage src={item.image} alt={item.name} className="w-full h-36 rounded-t-xl" />
-              {/* Overlay badges */}
-              <div className="absolute top-2 left-2 flex gap-1 flex-wrap">
-                {item.bestSeller && <span className="badge badge-orange text-[9px] backdrop-blur-sm">★ Best</span>}
-                {item.badge && <span className="badge badge-cyan text-[9px] backdrop-blur-sm">{item.badge}</span>}
+        {filtered.map((item) => {
+          const isCombo = item.category === 'Combo Blasters' || item.itemType === 'Combo';
+          return (
+            <motion.div key={item.id} variants={fadeUp}
+              className={`glass-card overflow-hidden flex flex-col transition-all duration-200 ${!item.available ? 'opacity-50' : ''}`}>
+              {/* Image */}
+              <div className="relative">
+                <ItemImage src={item.image} alt={item.name} className="w-full h-36 rounded-t-xl" isCombo={isCombo} />
+                {/* Logo badge for combos */}
+                {isCombo && (
+                  <div className="absolute top-2 left-2 w-7 h-7 rounded-lg bg-navy-950/80 p-0.5 backdrop-blur-md border border-white/20 flex items-center justify-center z-10">
+                    <Image src="/logo.png" alt="BS Logo" width={24} height={24} className="object-contain" />
+                  </div>
+                )}
+                {/* Overlay badges */}
+                <div className="absolute top-2 right-12 flex gap-1 flex-wrap">
+                  {item.bestSeller && <span className="badge badge-orange text-[9px] backdrop-blur-sm">★ Best</span>}
+                  {item.badge && <span className="badge badge-cyan text-[9px] backdrop-blur-sm">{item.badge}</span>}
+                </div>
+                {/* Availability toggle overlaid */}
+                <button
+                  onClick={() => toggleAvailability(item.id)}
+                  title={item.available ? 'Mark unavailable' : 'Mark available'}
+                  className={`absolute top-2 right-2 p-1.5 rounded-lg backdrop-blur-sm transition-all ${
+                    item.available
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  }`}
+                >
+                  {item.available ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                </button>
               </div>
-              {/* Availability toggle overlaid */}
-              <button
-                onClick={() => toggleAvailability(item.id)}
-                title={item.available ? 'Mark unavailable' : 'Mark available'}
-                className={`absolute top-2 right-2 p-1.5 rounded-lg backdrop-blur-sm transition-all ${
-                  item.available
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                }`}
-              >
-                {item.available ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              </button>
-            </div>
 
-            {/* Info */}
-            <div className="p-3 flex flex-col gap-2 flex-1">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white leading-snug line-clamp-2">{item.name}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">{item.category}</p>
+              {/* Info */}
+              <div className="p-3 flex flex-col gap-2 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-white leading-snug line-clamp-2">{item.name}</p>
+                    <p className="text-[10px] text-white/40 mt-0.5">{item.category}</p>
+                  </div>
+                  {item.bestSeller && <Star className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />}
                 </div>
-                {item.bestSeller && <Star className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" />}
-              </div>
-              {item.description && (
-                <p className="text-[11px] text-white/30 truncate">{item.description}</p>
-              )}
-              <div className="flex items-center justify-between mt-auto pt-1">
-                <span className="text-base font-bold text-primary-400">
-                  {settings.currency}{item.price}
-                </span>
-                <div className="flex gap-1">
-                  <button onClick={() => openEdit(item)}
-                    className="p-1.5 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-colors">
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={() => handleDelete(item.id, item.name)}
-                    className="p-1.5 rounded-lg bg-red-500/10 text-red-400/70 hover:bg-red-500/20 hover:text-red-400 transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                {item.description && (
+                  <p className="text-[11px] text-white/30 truncate">{item.description}</p>
+                )}
+                {item.contains && item.contains.length > 0 && (
+                  <div className="mt-1 p-2 rounded-lg bg-white/[0.03] border border-white/5 space-y-1">
+                    <span className="text-[9px] uppercase font-bold text-primary-400 block">Contains:</span>
+                    {item.contains.map((c, idx) => (
+                      <p key={idx} className="text-[10px] text-white/70 truncate">• {c}</p>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center justify-between mt-auto pt-1">
+                  <span className="text-base font-bold text-primary-400">
+                    {settings.currency}{item.price}
+                  </span>
+                  <div className="flex gap-1">
+                    <button onClick={() => openEdit(item)}
+                      className="p-1.5 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-colors">
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleDelete(item.id, item.name)}
+                      className="p-1.5 rounded-lg bg-red-500/10 text-red-400/70 hover:bg-red-500/20 hover:text-red-400 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </div>
 
       {filtered.length === 0 && (
@@ -282,14 +323,14 @@ export default function MenuManagement() {
                   <input value={form.image}
                     onChange={(e) => { setForm({ ...form, image: e.target.value }); setPreviewError(false); }}
                     className="glass-input text-sm"
-                    placeholder="https://images.unsplash.com/..." />
+                    placeholder="https://images.unsplash.com/ or /logo.png" />
                   {form.image && !previewError && (
-                    <div className="mt-2 rounded-xl overflow-hidden h-32 relative">
+                    <div className="mt-2 rounded-xl overflow-hidden h-32 relative bg-navy-950 p-2 border border-white/10 flex items-center justify-center">
                       <Image
                         src={form.image}
                         alt="preview"
                         fill
-                        className="object-cover"
+                        className="object-contain"
                         onError={() => setPreviewError(true)}
                         unoptimized={false}
                       />
@@ -322,12 +363,42 @@ export default function MenuManagement() {
                       Category
                     </label>
                     <select value={form.category}
-                      onChange={(e) => setForm({ ...form, category: e.target.value })}
+                      onChange={(e) => {
+                        const newCat = e.target.value;
+                        setForm({
+                          ...form,
+                          category: newCat,
+                          itemType: newCat === 'Combo Blasters' ? 'Combo' : form.itemType,
+                          image: newCat === 'Combo Blasters' && !form.image ? '/logo.png' : form.image,
+                        });
+                      }}
                       className="glass-input">
                       {MENU_CATEGORIES.map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-white/40 uppercase tracking-wider font-semibold mb-1.5 block">
+                      Item Type
+                    </label>
+                    <select value={form.itemType}
+                      onChange={(e) => setForm({ ...form, itemType: e.target.value })}
+                      className="glass-input">
+                      <option value="Item">Single Item</option>
+                      <option value="Combo">Combo</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 uppercase tracking-wider font-semibold mb-1.5 block">
+                      Badge (optional)
+                    </label>
+                    <input value={form.badge}
+                      onChange={(e) => setForm({ ...form, badge: e.target.value })}
+                      className="glass-input" placeholder='e.g. "🔥 Combo"' />
                   </div>
                 </div>
 
@@ -342,11 +413,11 @@ export default function MenuManagement() {
 
                 <div>
                   <label className="text-xs text-white/40 uppercase tracking-wider font-semibold mb-1.5 block">
-                    Badge (optional)
+                    Contains Items (comma separated, for Combos)
                   </label>
-                  <input value={form.badge}
-                    onChange={(e) => setForm({ ...form, badge: e.target.value })}
-                    className="glass-input" placeholder='e.g. "Normal ₹89 / Thick ₹149"' />
+                  <input value={form.contains}
+                    onChange={(e) => setForm({ ...form, contains: e.target.value })}
+                    className="glass-input" placeholder="Item 1, Item 2, Thums Up 250ml / Coke 250ml" />
                 </div>
 
                 <label className="flex items-center gap-3 cursor-pointer select-none">

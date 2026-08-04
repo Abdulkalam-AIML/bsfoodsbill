@@ -207,19 +207,22 @@ export function generateThermalReceipt(bill: Bill, settings?: CafeSettings): jsP
   // Total Section
   lines.push(formatRow(`Total Qty: ${totalQty}`, `Subtotal: ${bill.subtotal.toFixed(2)}`, 42));
   
-  const isOffer = bill.discountType === 'fixed' && (bill.discountValue === 99 || bill.discountValue === 150);
-  if (bill.discount > 0) {
-    if (isOffer) {
-      lines.push(formatRow('', `Offer Discount: -${bill.discount.toFixed(2)}`, 42));
-    } else {
-      const discPercent = bill.discountType === 'percentage' ? ` (${bill.discountValue}%)` : '';
-      lines.push(formatRow('', `Discount${discPercent}: -${bill.discount.toFixed(2)}`, 42));
-    }
+  if (bill.deliveryCharge && bill.deliveryCharge > 0) {
+    lines.push(formatRow('', `Delivery Charge: ${bill.deliveryCharge.toFixed(2)}`, 42));
+  }
+  if (bill.packingCharge && bill.packingCharge > 0) {
+    lines.push(formatRow('', `Packing Charge: ${bill.packingCharge.toFixed(2)}`, 42));
+  }
+  if (bill.extraCharge && bill.extraCharge > 0) {
+    lines.push(formatRow('', `Extra Charge: ${bill.extraCharge.toFixed(2)}`, 42));
+  }
+  if (bill.discount && bill.discount !== 0) {
+    lines.push(formatRow('', `Discount: -${bill.discount.toFixed(2)}`, 42));
   }
   
   // Double rule
   lines.push('==========================================');
-  lines.push(formatRow('GRAND TOTAL', `₹${bill.total.toFixed(2)}`, 42));
+  lines.push(formatRow('GRAND TOTAL', `₹${(bill.grandTotal !== undefined ? bill.grandTotal : bill.total).toFixed(2)}`, 42));
   lines.push('------------------------------------------');
   lines.push(formatRow('Payment Method', bill.paymentMethod.toUpperCase(), 42));
   lines.push('------------------------------------------');
@@ -368,35 +371,43 @@ export function generateDailyReportPDF(report: DailyReport, settings?: CafeSetti
 
   y += 15;
 
-  // Analytics Section
+  // Analytics & Revenue Columns
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(10, 14, 39);
   doc.text('PERFORMANCE ANALYTICS', margin, y);
+  doc.text('REVENUE & CHARGES BREAKDOWN', 110, y);
   y += 8;
-  doc.setFontSize(10);
+
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Peak Sales Hour: ${report.peakHour}`, margin, y);
-  y += 6;
-  doc.text(`WhatsApp Bills Sent: ${report.whatsappCount}`, margin, y);
-  y += 6;
-  doc.text(`Kitchen Tickets Printed: ${report.kitchenTicketsPrinted || 0}`, margin, y);
-  y += 6;
-  doc.text(`Customer Bills Printed: ${report.customerBillsPrinted || 0}`, margin, y);
-  y += 15;
 
-  // Payment Methods
-  doc.setFontSize(12);
+  let leftY = y;
+  doc.text(`Peak Sales Hour: ${report.peakHour || 'N/A'}`, margin, leftY); leftY += 5;
+  doc.text(`WhatsApp Bills Sent: ${report.whatsappCount}`, margin, leftY); leftY += 5;
+  doc.text(`Kitchen Tickets Printed: ${report.kitchenTicketsPrinted || 0}`, margin, leftY); leftY += 5;
+  doc.text(`Customer Bills Printed: ${report.customerBillsPrinted || 0}`, margin, leftY); leftY += 8;
+
+  // Payment methods under left column
   doc.setFont('helvetica', 'bold');
-  doc.text('PAYMENT METHODS', margin, y);
-  y += 8;
-
+  doc.text('PAYMENT SPLIT', margin, leftY); leftY += 5;
+  doc.setFont('helvetica', 'normal');
   Object.entries(report.paymentMethods).forEach(([method, count]) => {
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${method.toUpperCase()}:`, margin, y);
-    doc.text(count.toString(), 60, y);
-    y += 6;
+    doc.text(`${method.toUpperCase()}: ${count}`, margin, leftY);
+    leftY += 5;
   });
+
+  let rightY = y;
+  doc.text(`Food Sales (Subtotal): ${s.currency}${(report.totalFoodSales || 0).toFixed(2)}`, 110, rightY); rightY += 5;
+  doc.text(`Delivery Charges:      ${s.currency}${(report.totalDeliveryCharges || 0).toFixed(2)}`, 110, rightY); rightY += 5;
+  doc.text(`Packing Charges:       ${s.currency}${(report.totalPackingCharges || 0).toFixed(2)}`, 110, rightY); rightY += 5;
+  doc.text(`Extra Charges:         ${s.currency}${(report.totalExtraCharges || 0).toFixed(2)}`, 110, rightY); rightY += 5;
+  doc.text(`Discounts Given:      -${s.currency}${(report.totalDiscount || 0).toFixed(2)}`, 110, rightY); rightY += 7;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Net Revenue:           ${s.currency}${report.totalRevenue.toFixed(2)}`, 110, rightY);
+
+  y = Math.max(leftY, rightY);
 
   // Footer
   doc.setFontSize(8);
@@ -611,13 +622,28 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
         <span>Subtotal: ₹${bill.subtotal.toFixed(2)}</span>
       </div>
       
-      ${bill.discount > 0 ? `
+      ${bill.deliveryCharge && bill.deliveryCharge > 0 ? `
         <div class="bold-text" style="display: flex; justify-content: space-between; margin: 2px 0; font-size: 11px;">
           <span></span>
-          <span>
-            ${isOffer ? 'Offer Discount' : `Discount${bill.discountType === 'percentage' ? ` (${bill.discountValue}%)` : ''}`}: 
-            -₹${bill.discount.toFixed(2)}
-          </span>
+          <span>Delivery Charge: ₹${bill.deliveryCharge.toFixed(2)}</span>
+        </div>
+      ` : ''}
+      ${bill.packingCharge && bill.packingCharge > 0 ? `
+        <div class="bold-text" style="display: flex; justify-content: space-between; margin: 2px 0; font-size: 11px;">
+          <span></span>
+          <span>Packing Charge: ₹${bill.packingCharge.toFixed(2)}</span>
+        </div>
+      ` : ''}
+      ${bill.extraCharge && bill.extraCharge > 0 ? `
+        <div class="bold-text" style="display: flex; justify-content: space-between; margin: 2px 0; font-size: 11px;">
+          <span></span>
+          <span>Extra Charge: ₹${bill.extraCharge.toFixed(2)}</span>
+        </div>
+      ` : ''}
+      ${bill.discount && bill.discount !== 0 ? `
+        <div class="bold-text" style="display: flex; justify-content: space-between; margin: 2px 0; font-size: 11px;">
+          <span></span>
+          <span>Discount: -₹${Math.abs(bill.discount).toFixed(2)}</span>
         </div>
       ` : ''}
       
@@ -626,7 +652,7 @@ function getCustomerReceiptHtml(bill: Bill, s: CafeSettings): string {
       <!-- Grand Total -->
       <div class="bold-text" style="display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0;">
         <span>GRAND TOTAL</span>
-        <span>₹${bill.total.toFixed(2)}</span>
+        <span>₹${(bill.grandTotal !== undefined ? bill.grandTotal : bill.total).toFixed(2)}</span>
       </div>
       
       <div class="receipt-single-line"></div>

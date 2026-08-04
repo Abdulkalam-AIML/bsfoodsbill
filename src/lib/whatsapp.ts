@@ -52,8 +52,11 @@ export function generateBillMessage(bill: Bill, settings?: CafeSettings): string
 
   message += `━━━━━━━━━━━━━━━━━━\n\n`;
   message += `💰 Subtotal: ₹${bill.subtotal}\n`;
-  if (bill.discount > 0) message += `🎁 Discount: ₹${bill.discount}\n`;
-  message += `✅ *TOTAL: ₹${bill.total}*\n\n`;
+  if (bill.deliveryCharge && bill.deliveryCharge > 0) message += `🛵 Delivery Charge: ₹${bill.deliveryCharge}\n`;
+  if (bill.packingCharge && bill.packingCharge > 0) message += `📦 Packing Charge: ₹${bill.packingCharge}\n`;
+  if (bill.extraCharge && bill.extraCharge > 0) message += `➕ Extra Charge: ₹${bill.extraCharge}\n`;
+  if (bill.discount && bill.discount !== 0) message += `🎁 Discount: ${bill.discount < 0 ? '+' : '-'}₹${Math.abs(bill.discount)}\n`;
+  message += `✅ *TOTAL: ₹${bill.grandTotal || bill.total}*\n\n`;
   message += `💳 Payment: ${bill.paymentMethod.toUpperCase()}\n\n`;
   message += `━━━━━━━━━━━━━━━━━━\n\n`;
   message += `🙏 Thank you for visiting BS FOODS!\n\n`;

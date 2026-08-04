@@ -5,6 +5,7 @@
 
 const KEYS = {
   BILLS: 'bsfoods_today_bills',
+  ALL_BILLS: 'bsfoods_all_bills',
   MENU: 'bsfoods_menu',
   SETTINGS: 'bsfoods_settings',
   REPORT: 'bsfoods_today_report',
@@ -64,14 +65,34 @@ export function getTodayBills(): import('@/types').Bill[] {
   return getItem(KEYS.BILLS, []);
 }
 
+export function getAllBills(): import('@/types').Bill[] {
+  return getItem(KEYS.ALL_BILLS, []);
+}
+
 export function saveBill(bill: import('@/types').Bill): void {
   const bills = getTodayBills();
   bills.push(bill);
   setItem(KEYS.BILLS, bills);
+
+  const allBills = getAllBills();
+  allBills.push(bill);
+  setItem(KEYS.ALL_BILLS, allBills);
 }
 
 export function saveAllBills(bills: import('@/types').Bill[]): void {
   setItem(KEYS.BILLS, bills);
+
+  const allBills = getAllBills();
+  const updatedAllBills = allBills.map((b) => {
+    const updated = bills.find((tb) => tb.id === b.id);
+    return updated ? updated : b;
+  });
+  bills.forEach((tb) => {
+    if (!allBills.some((b) => b.id === tb.id)) {
+      updatedAllBills.push(tb);
+    }
+  });
+  setItem(KEYS.ALL_BILLS, updatedAllBills);
 }
 
 export function getNextBillNumber(): number {
@@ -147,6 +168,7 @@ export function generateDailyReport(): import('@/types').DailyReport {
 
   const itemsSold: Record<string, number> = {};
   const itemsRevenue: Record<string, number> = {};
+  const categorySales: Record<string, { qty: number; revenue: number }> = {};
   const hourlyData: Record<string, number> = {};
   const paymentMethods: Record<string, number> = { cash: 0, upi: 0, card: 0 };
   let totalDiscount = 0;
@@ -155,20 +177,38 @@ export function generateDailyReport(): import('@/types').DailyReport {
   let kitchenTicketsPrinted = 0;
   let customerBillsPrinted = 0;
 
+  let totalDeliveryCharges = 0;
+  let totalPackingCharges = 0;
+  let totalExtraCharges = 0;
+  let totalFoodSales = 0;
+
   bills.forEach((bill) => {
     // Items sold & revenue
     bill.items.forEach((item) => {
       itemsSold[item.name] = (itemsSold[item.name] || 0) + item.quantity;
       itemsRevenue[item.name] = (itemsRevenue[item.name] || 0) + (item.price * item.quantity);
+      
+      const cat = item.category || 'Other';
+      if (!categorySales[cat]) {
+        categorySales[cat] = { qty: 0, revenue: 0 };
+      }
+      categorySales[cat].qty += item.quantity;
+      categorySales[cat].revenue += item.price * item.quantity;
     });
-    // Hourly
+    // Hourly (based on grandTotal or total)
     const hour = new Date(bill.createdAt).getHours();
     const hourKey = `${hour}:00`;
-    hourlyData[hourKey] = (hourlyData[hourKey] || 0) + bill.total;
+    hourlyData[hourKey] = (hourlyData[hourKey] || 0) + (bill.grandTotal || bill.total);
     // Payment
     paymentMethods[bill.paymentMethod] = (paymentMethods[bill.paymentMethod] || 0) + 1;
     // Discount
-    totalDiscount += bill.discount;
+    totalDiscount += bill.discount || 0;
+    // Charges & Food sales
+    totalDeliveryCharges += bill.deliveryCharge || 0;
+    totalPackingCharges += bill.packingCharge || 0;
+    totalExtraCharges += bill.extraCharge || 0;
+    totalFoodSales += bill.subtotal || 0;
+
     // Counts
     if (bill.printed) printCount++;
     if (bill.whatsappSent) whatsappCount++;
@@ -176,7 +216,7 @@ export function generateDailyReport(): import('@/types').DailyReport {
     if (bill.customerBillPrinted) customerBillsPrinted++;
   });
 
-  const totalSales = bills.reduce((sum, b) => sum + b.total, 0);
+  const totalSales = bills.reduce((sum, b) => sum + (b.grandTotal || b.total), 0);
 
   // Find peak hour
   let peakHour = '';
@@ -196,6 +236,7 @@ export function generateDailyReport(): import('@/types').DailyReport {
     totalRevenue: totalSales,
     itemsSold,
     itemsRevenue,
+    categorySales,
     paymentMethods,
     printCount,
     whatsappCount,
@@ -203,6 +244,10 @@ export function generateDailyReport(): import('@/types').DailyReport {
     hourlyData,
     kitchenTicketsPrinted,
     customerBillsPrinted,
+    totalDeliveryCharges,
+    totalPackingCharges,
+    totalExtraCharges,
+    totalFoodSales,
   };
 }
 

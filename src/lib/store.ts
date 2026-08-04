@@ -54,12 +54,20 @@ export interface AppState {
   paymentMethod: 'cash' | 'upi' | 'card';
   discountType: 'percentage' | 'fixed';
   discountValue: number;
+  deliveryCharge: number;
+  packingCharge: number;
+  extraCharge: number;
+  cartDiscount: number;
   setOrderType: (type: 'dine-in' | 'takeaway') => void;
   setTableNumber: (num: string) => void;
   setOrderNotes: (notes: string) => void;
   setPaymentMethod: (method: 'cash' | 'upi' | 'card') => void;
   setDiscountType: (type: 'percentage' | 'fixed') => void;
   setDiscountValue: (value: number) => void;
+  setDeliveryCharge: (val: number) => void;
+  setPackingCharge: (val: number) => void;
+  setExtraCharge: (val: number) => void;
+  setCartDiscount: (val: number) => void;
 
   // Tables
   tables: TableState[];
@@ -211,6 +219,10 @@ export const useStore = create<AppState>((set, get) => ({
       currentBillId: null,
       billPrinted: false,
       billWhatsappSent: false,
+      deliveryCharge: 0,
+      packingCharge: 0,
+      extraCharge: 0,
+      cartDiscount: 0,
     });
   },
 
@@ -221,18 +233,30 @@ export const useStore = create<AppState>((set, get) => ({
   paymentMethod: 'cash',
   discountType: 'percentage',
   discountValue: 0,
+  deliveryCharge: 0,
+  packingCharge: 0,
+  extraCharge: 0,
+  cartDiscount: 0,
   setOrderType: (type) => set({ orderType: type }),
   setTableNumber: (num) => set({ tableNumber: num }),
   setOrderNotes: (notes) => set({ orderNotes: notes }),
   setPaymentMethod: (method) => set({ paymentMethod: method }),
   setDiscountType: (type) => set({ discountType: type }),
   setDiscountValue: (value) => set({ discountValue: value }),
+  setDeliveryCharge: (val) => set({ deliveryCharge: val }),
+  setPackingCharge: (val) => set({ packingCharge: val }),
+  setExtraCharge: (val) => set({ extraCharge: val }),
+  setCartDiscount: (val) => set({ cartDiscount: val }),
 
   // ---- Computed ----
   subtotal: () => {
     return get().cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   },
   discountAmount: () => {
+    const { cartDiscount } = get();
+    if (cartDiscount !== 0) {
+      return cartDiscount;
+    }
     const { discountType, discountValue } = get();
     const sub = get().subtotal();
     if (discountType === 'percentage') {
@@ -241,7 +265,12 @@ export const useStore = create<AppState>((set, get) => ({
     return Math.min(discountValue, sub);
   },
   total: () => {
-    return get().subtotal() - get().discountAmount();
+    const sub = get().subtotal();
+    const disc = get().discountAmount();
+    const delivery = get().deliveryCharge || 0;
+    const packing = get().packingCharge || 0;
+    const extra = get().extraCharge || 0;
+    return sub + delivery + packing + extra - disc;
   },
 
   // ---- Bills ----
@@ -253,14 +282,15 @@ export const useStore = create<AppState>((set, get) => ({
   createBill: (printed, whatsappSent) => {
     const state = get();
     const billNumber = getNextBillNumber();
+    const disc = state.discountAmount();
     const bill: Bill = {
       id: `BSF-${Date.now()}`,
       billNumber,
       items: state.cart,
       subtotal: state.subtotal(),
-      discount: state.discountAmount(),
-      discountType: state.discountType,
-      discountValue: state.discountValue,
+      discount: disc,
+      discountType: state.cartDiscount !== 0 ? 'fixed' : state.discountType,
+      discountValue: state.cartDiscount !== 0 ? state.cartDiscount : state.discountValue,
       total: state.total(),
       orderType: state.orderType,
       tableNumber: state.tableNumber,
@@ -275,6 +305,10 @@ export const useStore = create<AppState>((set, get) => ({
       kotPrinted: false,
       billPrinted: false,
       reportAdded: false,
+      deliveryCharge: state.deliveryCharge || 0,
+      packingCharge: state.packingCharge || 0,
+      extraCharge: state.extraCharge || 0,
+      grandTotal: state.total(),
     };
     saveBill(bill);
     const bills = [...state.bills, bill];
@@ -366,6 +400,10 @@ export const useStore = create<AppState>((set, get) => ({
             lastUpdated: new Date().toISOString(),
             startedAt: t.startedAt || new Date().toISOString(),
             currentBillId: state.currentBillId,
+            deliveryCharge: state.deliveryCharge,
+            packingCharge: state.packingCharge,
+            extraCharge: state.extraCharge,
+            discount: state.cartDiscount,
           }
         : t,
     );
@@ -388,9 +426,11 @@ export const useStore = create<AppState>((set, get) => ({
       currentBillId: table.currentBillId || null,
       billPrinted: bill ? (bill.customerBillPrinted || bill.billPrinted || false) : false,
       billWhatsappSent: bill ? bill.whatsappSent : false,
+      deliveryCharge: table.deliveryCharge || 0,
+      packingCharge: table.packingCharge || 0,
+      extraCharge: table.extraCharge || 0,
+      cartDiscount: table.discount || 0,
     });
-
-    // Mark table as available while editing? No, keep occupied but we are "resuming" it.
   },
   clearTable: (num) => {
     const newTables = get().tables.map((t) =>

@@ -99,6 +99,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (v: string) => v
     Card: CreditCard,
   };
 
+  const categoryBreakdown = useMemo(() => {
+    if (!report?.categorySales) return [];
+    return Object.entries(report.categorySales)
+      .sort((a, b) => b[1].revenue - a[1].revenue);
+  }, [report]);
+
   return (
     <motion.div
       variants={stagger}
@@ -138,16 +144,43 @@ export default function Dashboard({ onNavigate }: { onNavigate: (v: string) => v
           <motion.div
             key={stat.label}
             variants={fadeUp}
-            className="glass-card p-4 md:p-5 group hover:border-primary-500/20 transition-all duration-300"
+            className="glass-card p-4 md:p-5 group hover:border-primary-500/20 transition-all duration-300 flex flex-col justify-between"
           >
-            <div className="flex items-start justify-between mb-3">
-              <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center`}>
-                <stat.icon className={`w-5 h-5 ${stat.text}`} />
+            <div>
+              <div className="flex items-start justify-between mb-3">
+                <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center`}>
+                  <stat.icon className={`w-5 h-5 ${stat.text}`} />
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-white/20 group-hover:text-primary-400 transition-colors" />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-white/20 group-hover:text-primary-400 transition-colors" />
+              <p className="text-white/50 text-xs font-medium uppercase tracking-wider">{stat.label}</p>
+              <p className="text-white font-display text-xl md:text-2xl font-bold mt-1">{stat.value}</p>
             </div>
-            <p className="text-white/50 text-xs font-medium uppercase tracking-wider">{stat.label}</p>
-            <p className="text-white font-display text-xl md:text-2xl font-bold mt-1">{stat.value}</p>
+            
+            {stat.label === 'Revenue' && (
+              <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-1.5 text-[10px] text-white/40 font-medium">
+                <div className="flex justify-between">
+                  <span>Food Total</span>
+                  <span className="text-white/60">{settings.currency}{(report?.totalFoodSales || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Delivery Charges</span>
+                  <span className="text-white/60">{settings.currency}{(report?.totalDeliveryCharges || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Packing Charges</span>
+                  <span className="text-white/60">{settings.currency}{(report?.totalPackingCharges || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Extra Charges</span>
+                  <span className="text-white/60">{settings.currency}{(report?.totalExtraCharges || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between text-red-400/80">
+                  <span>Discounts Given</span>
+                  <span>-{settings.currency}{(report?.totalDiscount || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            )}
           </motion.div>
         ))}
       </div>
@@ -243,10 +276,44 @@ export default function Dashboard({ onNavigate }: { onNavigate: (v: string) => v
         </motion.div>
       </div>
 
-      {/* Top Items & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Category Sales & Top Items */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Category Sales */}
+        <motion.div variants={fadeUp} className="glass-card p-5 lg:col-span-1">
+          <h3 className="section-title mb-4 flex items-center gap-2">
+            <ShoppingBag className="w-5 h-5 text-emerald-400" />
+            Category Sales
+          </h3>
+          {categoryBreakdown.length > 0 ? (
+            <div className="space-y-2.5 max-h-[220px] overflow-y-auto no-scrollbar">
+              {categoryBreakdown.map(([cat, data]) => (
+                <div
+                  key={cat}
+                  className={`flex items-center justify-between p-2.5 rounded-xl border ${
+                    cat === 'Combo Blasters'
+                      ? 'bg-primary-500/10 border-primary-500/30'
+                      : 'bg-white/[0.03] border-white/5'
+                  }`}
+                >
+                  <div>
+                    <p className={`text-xs font-semibold ${cat === 'Combo Blasters' ? 'text-primary-300' : 'text-white/80'}`}>
+                      {cat}
+                    </p>
+                    <p className="text-[10px] text-white/40">{data.qty} items sold</p>
+                  </div>
+                  <span className="text-xs font-bold text-emerald-400">
+                    {settings.currency}{data.revenue.toLocaleString('en-IN')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-white/30 text-sm py-6 text-center">No category sales yet</p>
+          )}
+        </motion.div>
+
         {/* Top Selling */}
-        <motion.div variants={fadeUp} className="glass-card p-5">
+        <motion.div variants={fadeUp} className="glass-card p-5 lg:col-span-1">
           <h3 className="section-title mb-4 flex items-center gap-2">
             <Star className="w-5 h-5 text-yellow-400" />
             Top Selling Items
@@ -273,7 +340,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (v: string) => v
         </motion.div>
 
         {/* Quick Actions */}
-        <motion.div variants={fadeUp} className="glass-card p-5">
+        <motion.div variants={fadeUp} className="glass-card p-5 lg:col-span-1">
           <h3 className="section-title mb-4">Quick Actions</h3>
           <div className="grid grid-cols-2 gap-3">
             {[
