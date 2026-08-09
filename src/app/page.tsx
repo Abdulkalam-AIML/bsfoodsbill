@@ -51,7 +51,7 @@ export default function Home() {
   // Force-refresh menu to latest version (checks version key in localStorage)
   useEffect(() => {
     if (!isLoggedIn) return;
-    const MENU_VERSION = 'v4'; // bump this whenever menu-data.ts changes
+    const MENU_VERSION = 'v5'; // bump this whenever menu-data.ts changes
     const storedVersion = typeof window !== 'undefined'
       ? localStorage.getItem('bsfoods_menu_version')
       : null;

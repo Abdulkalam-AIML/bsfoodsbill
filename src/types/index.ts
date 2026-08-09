@@ -96,7 +96,6 @@ export type MenuCategory =
   | 'Offers'
   | 'Extras'
   | 'Utility'
-  | 'Biryani'
   | 'Beverages'
   | 'Combo Blasters';
 
@@ -128,7 +127,6 @@ export const MENU_CATEGORIES: MenuCategory[] = [
   'Offers',
   'Extras',
   'Utility',
-  'Biryani',
   'Beverages',
   'Combo Blasters',
 ];
