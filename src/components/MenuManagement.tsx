@@ -131,6 +131,7 @@ export default function MenuManagement() {
       : undefined;
 
     if (editId) {
+      const existing = menu.find((m) => m.id === editId);
       updateMenuItem(editId, {
         name: form.name,
         category: form.category,
@@ -141,6 +142,7 @@ export default function MenuManagement() {
         badge: form.badge || undefined,
         itemType: (isComboCat || form.itemType === 'Combo') ? 'Combo' : 'Item',
         contains: parsedContains,
+        variants: existing?.variants,
       });
       toast.success('Item updated!');
     } else {

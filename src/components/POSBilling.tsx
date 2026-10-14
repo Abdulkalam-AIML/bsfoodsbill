@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, ShoppingCart, Plus, Minus, Trash2, User, Phone,
@@ -132,20 +132,66 @@ function ComboDetailsModal({
 /* ─────────── Menu item card ─────────── */
 function MenuCard({
   item,
-  inCart,
-  qty,
+  cart,
   currency,
   onAdd,
   onInfo,
+  searchQuery,
 }: {
   item: MenuItem;
-  inCart: boolean;
-  qty: number;
+  cart: import('@/types').CartItem[];
   currency: string;
-  onAdd: () => void;
+  onAdd: (item: MenuItem, variant?: import('@/types').MenuItemVariant) => void;
   onInfo?: (item: MenuItem) => void;
+  searchQuery?: string;
 }) {
   const isCombo = item.category === 'Combo Blasters' || item.itemType === 'Combo';
+  const hasVariants = !!(item.variants && item.variants.length > 0);
+
+  // Auto-select variant if user searched for it (e.g. "thick", "veg", "fried")
+  const matchedVariant = useMemo(() => {
+    if (!hasVariants || !item.variants) return undefined;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase().trim();
+      const matched = item.variants.find((v) => v.name.toLowerCase().includes(q));
+      if (matched) return matched;
+    }
+    return item.variants[0];
+  }, [hasVariants, item.variants, searchQuery]);
+
+  const [selectedVariantName, setSelectedVariantName] = useState<string>(
+    matchedVariant?.name || item.variants?.[0]?.name || ''
+  );
+
+  // Sync when search query or item changes
+  useEffect(() => {
+    if (matchedVariant) {
+      setSelectedVariantName(matchedVariant.name);
+    }
+  }, [matchedVariant]);
+
+  const activeVariant = item.variants?.find((v) => v.name === selectedVariantName) || item.variants?.[0];
+  const currentPrice = activeVariant?.price !== undefined ? activeVariant.price : item.price;
+
+  // Determine cart state for this specific card and active variant
+  const variantCartId = activeVariant
+    ? `${item.id}-${activeVariant.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`
+    : item.id;
+  const variantCartName = activeVariant ? `${item.name} (${activeVariant.name})` : item.name;
+
+  const currentCartItem = cart.find(
+    (c) => c.id === variantCartId || c.name === variantCartName || (!hasVariants && c.id === item.id)
+  );
+  const totalItemQty = cart
+    .filter((c) => c.id === item.id || c.id.startsWith(item.id) || c.name.startsWith(item.name))
+    .reduce((s, c) => s + c.quantity, 0);
+
+  const inCart = totalItemQty > 0;
+  const displayQty = currentCartItem?.quantity || totalItemQty;
+
+  const handleCardAdd = () => {
+    onAdd(item, activeVariant);
+  };
 
   return (
     <motion.div
@@ -156,7 +202,7 @@ function MenuCard({
       `}
     >
       {/* Image */}
-      <div onClick={onAdd} className="cursor-pointer relative">
+      <div onClick={handleCardAdd} className="cursor-pointer relative">
         <MenuItemImage src={item.image} alt={item.imageAlt || item.name} isCombo={isCombo} />
 
         {/* Logo Badge for Combos */}
@@ -168,11 +214,11 @@ function MenuCard({
       </div>
 
       {/* Badges */}
-      <div className="absolute top-2 right-2 flex gap-1 flex-wrap z-10">
+      <div className="absolute top-2 right-2 flex gap-1 flex-wrap z-10 pointer-events-none">
         {item.bestSeller && (
           <span className="badge badge-orange text-[9px] px-1.5 py-0.5 backdrop-blur-sm">★ Best</span>
         )}
-        {item.badge && (
+        {item.badge && !hasVariants && (
           <span className="badge badge-cyan text-[9px] px-1.5 py-0.5 backdrop-blur-sm">{item.badge}</span>
         )}
       </div>
@@ -182,9 +228,9 @@ function MenuCard({
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="absolute top-2 left-2 w-6 h-6 rounded-full bg-primary-500 text-[11px] font-bold text-white flex items-center justify-center shadow-neon z-20"
+          className="absolute top-2 left-2 min-w-6 h-6 px-1.5 rounded-full bg-primary-500 text-[11px] font-bold text-white flex items-center justify-center shadow-neon z-20"
         >
-          {qty}
+          {displayQty}
         </motion.div>
       )}
 
@@ -192,7 +238,7 @@ function MenuCard({
       <div className="p-3 flex flex-col gap-1 flex-1">
         <div className="flex items-start justify-between gap-1">
           <p
-            onClick={onAdd}
+            onClick={handleCardAdd}
             className="text-xs font-semibold text-white leading-tight line-clamp-2 group-hover:text-primary-200 transition-colors cursor-pointer"
           >
             {item.name}
@@ -212,10 +258,48 @@ function MenuCard({
         </div>
 
         <p className="text-[10px] text-white/35 truncate">{item.category}</p>
+
+        {/* Variant Selector for Milkshakes, Pasta, Momos */}
+        {hasVariants && item.variants && (
+          <div
+            className="flex gap-1 my-1 p-0.5 rounded-lg bg-white/[0.04] border border-white/[0.08]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {item.variants.map((v) => {
+              const isSelected = (activeVariant?.name || selectedVariantName) === v.name;
+              return (
+                <button
+                  key={v.name}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedVariantName(v.name);
+                  }}
+                  className={`flex-1 py-1 px-1 rounded-md text-[10px] font-bold transition-all text-center leading-none ${
+                    isSelected
+                      ? 'bg-primary-500 text-white shadow-neon'
+                      : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                  }`}
+                >
+                  <span>{v.name}</span>
+                  {v.price !== undefined && (
+                    <span className="block text-[8px] font-normal opacity-90 mt-0.5">
+                      {currency}{v.price}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-auto pt-1">
-          <span className="text-sm font-bold text-primary-400">{currency}{item.price}</span>
+          <span className="text-sm font-bold text-primary-400">
+            {currency}{currentPrice}
+          </span>
           <button
-            onClick={onAdd}
+            onClick={handleCardAdd}
+            aria-label={`Add ${item.name} to cart`}
             className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
               inCart
                 ? 'bg-primary-500 text-white'
@@ -350,11 +434,35 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
           m.category.toLowerCase().includes(q) ||
           (m.description && m.description.toLowerCase().includes(q)) ||
           (m.contains && m.contains.some((c) => c.toLowerCase().includes(q))) ||
-          (m.itemType && m.itemType.toLowerCase().includes(q))
+          (m.itemType && m.itemType.toLowerCase().includes(q)) ||
+          (m.badge && m.badge.toLowerCase().includes(q)) ||
+          (m.variants && m.variants.some((v) => v.name.toLowerCase().includes(q)))
       );
     }
     return items;
   }, [menu, activeCategory, searchQuery]);
+
+  const handleAddToCart = useCallback(
+    (item: MenuItem, variant?: import('@/types').MenuItemVariant) => {
+      if (variant) {
+        const variantId = `${item.id}-${variant.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        const variantName = `${item.name} (${variant.name})`;
+        const price = variant.price !== undefined ? variant.price : item.price;
+        addToCart({
+          ...item,
+          id: variantId,
+          name: variantName,
+          price,
+          badge: variant.name,
+          selectedVariant: variant.name,
+        });
+      } else {
+        addToCart(item);
+      }
+      toast.success('Added to cart!', { duration: 800 });
+    },
+    [addToCart]
+  );
 
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
   const sub = subtotal();
@@ -544,24 +652,17 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
           {/* Menu grid */}
           <div className="flex-1 overflow-y-auto p-3 pt-1">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
-              {filteredMenu.map((item) => {
-                const inCart = !!cart.find((c) => c.id === item.id);
-                const qty = cart.find((c) => c.id === item.id)?.quantity || 0;
-                return (
-                  <MenuCard
-                    key={item.id}
-                    item={item}
-                    inCart={inCart}
-                    qty={qty}
-                    currency={settings.currency}
-                    onAdd={() => {
-                      addToCart(item);
-                      toast.success(`Added!`, { duration: 800 });
-                    }}
-                    onInfo={(itm) => setSelectedComboItem(itm)}
-                  />
-                );
-              })}
+              {filteredMenu.map((item) => (
+                <MenuCard
+                  key={item.id}
+                  item={item}
+                  cart={cart}
+                  currency={settings.currency}
+                  onAdd={handleAddToCart}
+                  onInfo={(itm) => setSelectedComboItem(itm)}
+                  searchQuery={searchQuery}
+                />
+              ))}
             </div>
 
             {filteredMenu.length === 0 && (

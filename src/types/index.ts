@@ -2,25 +2,33 @@
 // BS FOODS BILLING SYSTEM - Type Definitions
 // ============================================
 
+export interface MenuItemVariant {
+  name: string;         // e.g. "Regular", "Thick", "Veg", "Non-Veg", "Steamed", "Fried"
+  price?: number;       // variant-specific price (overrides base price)
+}
+
 export interface MenuItem {
   id: string;
   name: string;
   category: string;
   price: number;
-  image: string;        // URL (Unsplash / CDN)
+  image: string;        // URL (Unsplash / CDN / local)
   imageAlt?: string;    // accessibility text
   description: string;
   available: boolean;
   bestSeller: boolean;
-  badge?: string;       // e.g. "Normal ₹89 / Thick ₹149"
+  badge?: string;       // e.g. "Regular ₹99 / Thick ₹149"
   itemType?: 'Item' | 'Combo';
   contains?: string[];
+  variants?: MenuItemVariant[];
+  selectedVariant?: string;
 }
 
 export interface CartItem extends MenuItem {
   quantity: number;
   notes: string;
   itemDiscount: number;
+  selectedVariant?: string;
 }
 
 export interface Bill {
@@ -85,51 +93,50 @@ export interface CafeSettings {
   developerUrl: string;
 }
 
-export type MenuCategory =
-  | 'Pizza'
-  | 'Snacks'
-  | 'Sandwich'
-  | 'Burgers'
-  | 'Mocktails'
-  | 'Desserts & Ice Cream Scoops'
-  | 'Thick Shakes & Milk Shakes'
-  | 'Offers'
-  | 'Extras'
-  | 'Utility'
-  | 'Beverages'
-  | 'Combo Blasters';
-
-export type TableState =
-  | {
-      id: string;
-      number: number;
-      items: CartItem[];
-      orderType: 'dine-in' | 'takeaway';
-      orderNotes: string;
-      status: 'available' | 'occupied';
-      startedAt?: string;
-      lastUpdated?: string;
-      currentBillId?: string | null;
-      deliveryCharge?: number;
-      packingCharge?: number;
-      extraCharge?: number;
-      discount?: number;
-    };
-
-export const MENU_CATEGORIES: MenuCategory[] = [
+export const MENU_CATEGORIES = [
+  'Pop-up Snacks',
+  'Housie Cheesy Snacks',
+  'Hot & Crispy',
+  'Banquet Burgers',
+  'Pasta Punch (Macaroni)',
+  'Magic Masala Munch',
+  'Steam & Creamy',
+  'Wrap & Grab',
+  'Madly Match Sandwich',
+  'Milk Shakes & Thick Shakes',
+  'Sip & Refresh',
+  'Dazzling Desserts',
+  "Hot Soup's",
   'Pizza',
+  'Combo Blasters',
+  'Beverages',
+  'Offers',
+  'Extras',
+  'Utility',
   'Snacks',
   'Sandwich',
   'Burgers',
   'Mocktails',
   'Desserts & Ice Cream Scoops',
-  'Thick Shakes & Milk Shakes',
-  'Offers',
-  'Extras',
-  'Utility',
-  'Beverages',
-  'Combo Blasters',
-];
+] as const;
+
+export type MenuCategory = typeof MENU_CATEGORIES[number] | string;
+
+export type TableState = {
+  id: string;
+  number: number;
+  items: CartItem[];
+  orderType: 'dine-in' | 'takeaway';
+  orderNotes: string;
+  status: 'available' | 'occupied';
+  startedAt?: string;
+  lastUpdated?: string;
+  currentBillId?: string | null;
+  deliveryCharge?: number;
+  packingCharge?: number;
+  extraCharge?: number;
+  discount?: number;
+};
 
 export const DEFAULT_SETTINGS: CafeSettings = {
   cafeName: 'BS FOODS CAFE',

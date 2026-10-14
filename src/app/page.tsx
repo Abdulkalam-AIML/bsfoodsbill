@@ -51,19 +51,24 @@ export default function Home() {
   // Force-refresh menu to latest version (checks version key in localStorage)
   useEffect(() => {
     if (!isLoggedIn) return;
-    const MENU_VERSION = 'v5'; // bump this whenever menu-data.ts changes
+    const MENU_VERSION = 'v6'; // bump this whenever menu-data.ts changes
     const storedVersion = typeof window !== 'undefined'
       ? localStorage.getItem('bsfoods_menu_version')
       : null;
     if (storedVersion !== MENU_VERSION || menu.length === 0) {
-      import('@/lib/storage').then(({ saveMenu }) => {
-        saveMenu(DEFAULT_MENU);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('bsfoods_menu_version', MENU_VERSION);
+      Promise.all([import('@/lib/storage'), import('@/lib/menu-data')]).then(
+        ([{ getMenu, saveMenu }, { migrateMenu }]) => {
+          const currentMenu = getMenu();
+          const updatedMenu = migrateMenu(currentMenu);
+          saveMenu(updatedMenu);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('bsfoods_menu_version', MENU_VERSION);
+          }
+          loadMenu();
         }
-        loadMenu();
-      });
+      );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, loadMenu]); // intentionally omit menu.length to run once on login
 
   const handleNavigate = useCallback((v: string) => {
