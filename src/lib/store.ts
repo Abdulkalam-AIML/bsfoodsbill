@@ -12,6 +12,14 @@ import {
   getNextBillNumber,
   getMenu,
   saveMenu,
+  saveCustomMenuItem,
+  removeMenuItem,
+  recordItemOverride,
+  getCustomMenuItems,
+  getMenuOverrides,
+  getDeletedItemIds,
+  CURRENT_MENU_VERSION,
+  KEYS,
   getSettings,
   saveSettings as persistSettings,
   generateDailyReport,
@@ -22,6 +30,7 @@ import {
   saveHeldTables,
   saveAllBills,
 } from '@/lib/storage';
+import { DEFAULT_MENU, migrateMenu } from '@/lib/menu-data';
 import type { TableState } from '@/types';
 
 export interface AppState {
@@ -30,14 +39,15 @@ export interface AppState {
   userRole: string;
   login: (pin: string) => boolean;
   logout: () => void;
+  initAuth: () => void;
 
   // Menu
   menu: MenuItem[];
   loadMenu: () => void;
-  addMenuItem: (item: MenuItem) => void;
-  updateMenuItem: (id: string, updates: Partial<MenuItem>) => void;
-  deleteMenuItem: (id: string) => void;
-  toggleAvailability: (id: string) => void;
+  addMenuItem: (item: MenuItem) => boolean;
+  updateMenuItem: (id: string, updates: Partial<MenuItem>) => boolean;
+  deleteMenuItem: (id: string) => boolean;
+  toggleAvailability: (id: string) => boolean;
 
   // Cart
   cart: CartItem[];
@@ -131,6 +141,12 @@ export const useStore = create<AppState>((set, get) => ({
   // ---- Auth ----
   isLoggedIn: false,
   userRole: '',
+  initAuth: () => {
+    const auth = getAuth();
+    if (auth && auth.loggedIn && auth.role) {
+      set({ isLoggedIn: true, userRole: auth.role });
+    }
+  },
   login: (pin: string) => {
     const role = Object.entries(PINS).find(([, p]) => p === pin)?.[0];
     if (role) {
@@ -148,41 +164,87 @@ export const useStore = create<AppState>((set, get) => ({
   // ---- Menu ----
   menu: [],
   loadMenu: () => {
-    const menu = getMenu();
+    let menu = getMenu();
+    const customItems = getCustomMenuItems();
+    const overrides = getMenuOverrides();
+    const deletedIds = getDeletedItemIds();
+
+    if (!menu || menu.length === 0) {
+      menu = migrateMenu(DEFAULT_MENU, customItems, overrides, deletedIds);
+      saveMenu(menu);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(KEYS.MENU_VERSION, CURRENT_MENU_VERSION);
+      }
+    } else {
+      // Re-apply any custom items or overrides that might not be in active menu
+      const updated = migrateMenu(menu, customItems, overrides, deletedIds);
+      if (updated.length !== menu.length) {
+        menu = updated;
+        saveMenu(menu);
+      }
+    }
     set({ menu });
   },
   addMenuItem: (item) => {
-    const menu = [...get().menu, item];
-    saveMenu(menu);
-    set({ menu });
+    const ok = saveCustomMenuItem(item);
+    if (ok) {
+      const updatedMenu = getMenu();
+      set({ menu: updatedMenu });
+      return true;
+    }
+    return false;
   },
   updateMenuItem: (id, updates) => {
+    recordItemOverride(id, updates);
     const menu = get().menu.map((m) => (m.id === id ? { ...m, ...updates } : m));
-    saveMenu(menu);
-    set({ menu });
+    const ok = saveMenu(menu);
+    if (ok) {
+      set({ menu });
+      return true;
+    }
+    return false;
   },
   deleteMenuItem: (id) => {
-    const menu = get().menu.filter((m) => m.id !== id);
-    saveMenu(menu);
-    set({ menu });
+    const ok = removeMenuItem(id);
+    if (ok) {
+      const updatedMenu = getMenu();
+      set({ menu: updatedMenu });
+      return true;
+    }
+    return false;
   },
   toggleAvailability: (id) => {
+    const target = get().menu.find((m) => m.id === id);
+    if (!target) return false;
+    const newAvail = !target.available;
+    recordItemOverride(id, { available: newAvail });
     const menu = get().menu.map((m) =>
-      m.id === id ? { ...m, available: !m.available } : m,
+      m.id === id ? { ...m, available: newAvail } : m,
     );
-    saveMenu(menu);
-    set({ menu });
+    const ok = saveMenu(menu);
+    if (ok) {
+      set({ menu });
+      return true;
+    }
+    return false;
   },
 
   // ---- Cart ----
   cart: [],
   addToCart: (item) => {
     const cart = get().cart;
-    const existing = cart.find((c) => c.id === item.id);
+    // Differentiate items with different variants or combo component selections
+    const existing = cart.find((c) => {
+      if (c.id !== item.id) return false;
+      const cComps = (c.selectedComponents || []).join('|');
+      const itemComps = (item.selectedComponents || []).join('|');
+      return cComps === itemComps;
+    });
+
     if (existing) {
       set({
         cart: cart.map((c) =>
-          c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c,
+          c === existing ? { ...c, quantity: c.quantity + 1 } : c,
         ),
       });
     } else {

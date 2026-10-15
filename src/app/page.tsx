@@ -29,7 +29,7 @@ const NAV_ITEMS: { id: View; label: string; icon: typeof LayoutDashboard; roles?
 
 export default function Home() {
   const {
-    isLoggedIn, userRole, logout, loadMenu, loadBills, loadSettings, menu,
+    isLoggedIn, userRole, logout, loadMenu, loadBills, loadSettings, menu, initAuth
   } = useStore();
   const [view, setView] = useState<View>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -37,39 +37,38 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    initAuth();
+  }, [initAuth]);
 
   useEffect(() => {
     if (isLoggedIn) {
       loadSettings();
       loadBills();
-      loadMenu();
-      autoCleanup();
-    }
-  }, [isLoggedIn, loadSettings, loadBills, loadMenu]);
 
-  // Force-refresh menu to latest version (checks version key in localStorage)
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    const MENU_VERSION = 'v6'; // bump this whenever menu-data.ts changes
-    const storedVersion = typeof window !== 'undefined'
-      ? localStorage.getItem('bsfoods_menu_version')
-      : null;
-    if (storedVersion !== MENU_VERSION || menu.length === 0) {
+      // Check version and run idempotent non-destructive migration if needed
       Promise.all([import('@/lib/storage'), import('@/lib/menu-data')]).then(
-        ([{ getMenu, saveMenu }, { migrateMenu }]) => {
+        ([{ getMenu, saveMenu, getCustomMenuItems, getMenuOverrides, getDeletedItemIds, CURRENT_MENU_VERSION, KEYS }, { migrateMenu, DEFAULT_MENU }]) => {
+          const storedVersion = typeof window !== 'undefined'
+            ? localStorage.getItem(KEYS.MENU_VERSION)
+            : null;
           const currentMenu = getMenu();
-          const updatedMenu = migrateMenu(currentMenu);
-          saveMenu(updatedMenu);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('bsfoods_menu_version', MENU_VERSION);
+
+          if (storedVersion !== CURRENT_MENU_VERSION || currentMenu.length === 0) {
+            const customItems = getCustomMenuItems();
+            const overrides = getMenuOverrides();
+            const deletedIds = getDeletedItemIds();
+            const updatedMenu = migrateMenu(currentMenu.length > 0 ? currentMenu : DEFAULT_MENU, customItems, overrides, deletedIds);
+            saveMenu(updatedMenu);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(KEYS.MENU_VERSION, CURRENT_MENU_VERSION);
+            }
           }
           loadMenu();
+          autoCleanup();
         }
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn, loadMenu]); // intentionally omit menu.length to run once on login
+  }, [isLoggedIn, loadSettings, loadBills, loadMenu]);
 
   const handleNavigate = useCallback((v: string) => {
     setView(v as View);

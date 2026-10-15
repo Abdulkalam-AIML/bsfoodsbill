@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Search, Edit3, Trash2, X, Check, Eye, EyeOff, Star, ImageOff
+  Plus, Search, Edit3, Trash2, X, Check, Eye, EyeOff, Star, ImageOff,
+  Download, Upload, ShieldCheck, Database
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { MENU_CATEGORIES } from '@/types';
+import { exportMenuBackupJSON, importMenuBackupJSON } from '@/lib/storage';
 import { toast } from 'sonner';
 
 const fadeUp = {
@@ -64,13 +66,18 @@ function ItemImage({ src, alt, className = '', isCombo = false }: { src: string;
 }
 
 export default function MenuManagement() {
-  const { menu, addMenuItem, updateMenuItem, deleteMenuItem, toggleAvailability, settings } = useStore();
+  const { menu, addMenuItem, updateMenuItem, deleteMenuItem, toggleAvailability, settings, loadMenu } = useStore();
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('All');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<MenuForm>(EMPTY_FORM);
   const [previewError, setPreviewError] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    loadMenu();
+  }, [loadMenu]);
 
   const categories = useMemo(() => {
     const presentCats = new Set(menu.map((m) => m.category));
@@ -112,7 +119,7 @@ export default function MenuManagement() {
       description: item.description,
       bestSeller: item.bestSeller,
       badge: item.badge || '',
-      itemType: item.itemType || (item.category === 'Combo Blasters' ? 'Combo' : 'Item'),
+      itemType: item.itemType || (item.category === 'Combo Blasters' || item.category === 'Budget Friendly Combos' ? 'Combo' : 'Item'),
       contains: item.contains ? item.contains.join(', ') : '',
     });
     setEditId(item.id);
@@ -125,15 +132,15 @@ export default function MenuManagement() {
       toast.error('Name and price are required');
       return;
     }
-    const isComboCat = form.category === 'Combo Blasters';
+    const isComboCat = form.category === 'Combo Blasters' || form.category === 'Budget Friendly Combos';
     const parsedContains = form.contains
       ? form.contains.split(',').map((c) => c.trim()).filter(Boolean)
       : undefined;
 
     if (editId) {
       const existing = menu.find((m) => m.id === editId);
-      updateMenuItem(editId, {
-        name: form.name,
+      const success = updateMenuItem(editId, {
+        name: form.name.trim(),
         category: form.category,
         price: Number(form.price),
         image: form.image || (isComboCat ? '/logo.png' : '/fallback-food.jpg'),
@@ -144,11 +151,18 @@ export default function MenuManagement() {
         contains: parsedContains,
         variants: existing?.variants,
       });
-      toast.success('Item updated!');
+
+      if (success) {
+        toast.success(`"${form.name.trim()}" updated & saved permanently!`);
+        loadMenu();
+        setShowForm(false);
+      } else {
+        toast.error('Failed to update item in persistent storage.');
+      }
     } else {
-      addMenuItem({
+      const success = addMenuItem({
         id: `item-${Date.now()}`,
-        name: form.name,
+        name: form.name.trim(),
         category: form.category,
         price: Number(form.price),
         image: form.image || (isComboCat ? '/logo.png' : '/fallback-food.jpg'),
@@ -158,16 +172,65 @@ export default function MenuManagement() {
         badge: form.badge || undefined,
         itemType: (isComboCat || form.itemType === 'Combo') ? 'Combo' : 'Item',
         contains: parsedContains,
+        isCustom: true,
       });
-      toast.success('Item added!');
+
+      if (success) {
+        toast.success(`"${form.name.trim()}" added & verified in storage!`);
+        loadMenu();
+        setShowForm(false);
+      } else {
+        toast.error('Storage quota exceeded or write failed. Check permissions.');
+      }
     }
-    setShowForm(false);
   };
 
   const handleDelete = (id: string, name: string) => {
-    if (!window.confirm(`Delete "${name}"?`)) return;
-    deleteMenuItem(id);
-    toast.success('Item deleted');
+    if (!window.confirm(`Delete "${name}" permanently?`)) return;
+    const success = deleteMenuItem(id);
+    if (success) {
+      toast.success(`"${name}" removed from menu & storage.`);
+      loadMenu();
+    } else {
+      toast.error('Failed to delete item from storage.');
+    }
+  };
+
+  const handleExportBackup = () => {
+    const jsonStr = exportMenuBackupJSON();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bs-foods-menu-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Menu backup exported successfully!');
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const ok = importMenuBackupJSON(content);
+        if (ok) {
+          loadMenu();
+          toast.success('Menu backup restored successfully!');
+        } else {
+          toast.error('Invalid backup format or storage write failed.');
+        }
+      } catch (err) {
+        toast.error('Failed to read backup file.');
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // Category counts
@@ -182,12 +245,40 @@ export default function MenuManagement() {
       {/* Header */}
       <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-white">Menu Management</h1>
-          <p className="text-white/40 text-sm mt-1">{menu.length} items total</p>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-2xl md:text-3xl font-bold text-white">Menu Management</h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <ShieldCheck className="w-3.5 h-3.5" /> Permanent Storage Verified
+            </span>
+          </div>
+          <p className="text-white/40 text-sm mt-1">{menu.length} items total • Dual-layer local persistence active</p>
         </div>
-        <motion.button whileTap={{ scale: 0.95 }} onClick={openAdd} className="btn-primary text-sm">
-          <Plus className="w-4 h-4" /> Add Item
-        </motion.button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportBackup}
+            accept=".json,application/json"
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            title="Import Menu Backup JSON"
+            className="btn-ghost text-xs py-2 px-3 flex items-center gap-1.5 border border-white/10 hover:border-white/20"
+          >
+            <Upload className="w-3.5 h-3.5 text-primary-400" /> Import Backup
+          </button>
+          <button
+            onClick={handleExportBackup}
+            title="Export Menu Backup JSON"
+            className="btn-ghost text-xs py-2 px-3 flex items-center gap-1.5 border border-white/10 hover:border-white/20"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" /> Export Backup
+          </button>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={openAdd} className="btn-primary text-sm py-2 px-4">
+            <Plus className="w-4 h-4" /> Add Item
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* Search + Filters */}

@@ -53,15 +53,36 @@ function ComboDetailsModal({
   item: MenuItem;
   currency: string;
   onClose: () => void;
-  onAdd: () => void;
+  onAdd: (selectedComponents?: string[]) => void;
 }) {
+  const [selections, setSelections] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    if (item.comboComponents) {
+      item.comboComponents.forEach((c) => {
+        init[c.name] = c.defaultChoice;
+      });
+    }
+    return init;
+  });
+
+  const handleSelectionChange = (compName: string, value: string) => {
+    setSelections((prev) => ({ ...prev, [compName]: value }));
+  };
+
+  const selectedList = useMemo(() => {
+    if (item.comboComponents && item.comboComponents.length > 0) {
+      return item.comboComponents.map((c) => selections[c.name] || c.defaultChoice);
+    }
+    return item.contains || [];
+  }, [item, selections]);
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="glass-card max-w-md w-full p-6 relative border border-primary-500/30 bg-navy-900/95 shadow-2xl rounded-2xl"
+        className="glass-card max-w-lg w-full p-6 relative border border-primary-500/30 bg-navy-900/95 shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto"
       >
         <button
           onClick={onClose}
@@ -84,25 +105,55 @@ function ComboDetailsModal({
           <div>
             <h3 className="font-display text-lg font-bold text-white leading-snug">{item.name}</h3>
             <p className="text-xs text-primary-400 font-semibold mt-0.5">{item.category}</p>
-            <p className="text-sm font-bold text-emerald-400 mt-1">{currency}{item.price}</p>
+            <p className="text-base font-bold text-emerald-400 mt-1">{currency}{item.price}</p>
           </div>
         </div>
 
-        {/* Contains Section */}
-        <div className="space-y-2 mb-6">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-white/50">Contains</h4>
-          <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 space-y-2">
-            {item.contains && item.contains.length > 0 ? (
-              item.contains.map((c, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-xs text-white/90 font-medium">
-                  <span className="text-primary-400 font-bold select-none">•</span>
-                  <span>{c}</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-white/60 italic">{item.description}</p>
-            )}
+        {/* Selection or Component List */}
+        <div className="space-y-3 mb-6">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-white/60">
+              {item.comboComponents && item.comboComponents.length > 0 ? 'Customize Included Components' : 'Included Components'}
+            </h4>
+            <span className="text-[10px] text-emerald-400 font-semibold">Single Advertised Price</span>
           </div>
+
+          {item.comboComponents && item.comboComponents.length > 0 ? (
+            <div className="space-y-2.5">
+              {item.comboComponents.map((comp) => (
+                <div key={comp.name} className="p-3 rounded-xl bg-white/[0.04] border border-white/10 space-y-1.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-primary-400">{comp.name}</span>
+                    <span className="text-[10px] text-white/40">Select option</span>
+                  </div>
+                  <select
+                    value={selections[comp.name] || comp.defaultChoice}
+                    onChange={(e) => handleSelectionChange(comp.name, e.target.value)}
+                    className="glass-input text-xs py-2 px-3 bg-navy-950/80 border-white/15 w-full cursor-pointer"
+                  >
+                    {comp.options.map((opt) => (
+                      <option key={opt} value={opt} className="bg-navy-900 text-white">
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 space-y-2">
+              {item.contains && item.contains.length > 0 ? (
+                item.contains.map((c, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs text-white/90 font-medium">
+                    <span className="text-primary-400 font-bold select-none">•</span>
+                    <span>{c}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-white/60 italic">{item.description}</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Action Button */}
@@ -111,17 +162,17 @@ function ComboDetailsModal({
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-all"
           >
-            Close
+            Cancel
           </button>
           <button
             onClick={() => {
-              onAdd();
+              onAdd(selectedList);
               onClose();
             }}
             aria-label={`Add ${item.name} to order`}
             className="flex-1 btn-primary py-2.5 text-xs font-bold justify-center"
           >
-            <Plus className="w-4 h-4" /> Add to Order ({currency}{item.price})
+            <Plus className="w-4 h-4" /> Add Combo ({currency}{item.price})
           </button>
         </div>
       </motion.div>
@@ -141,11 +192,11 @@ function MenuCard({
   item: MenuItem;
   cart: import('@/types').CartItem[];
   currency: string;
-  onAdd: (item: MenuItem, variant?: import('@/types').MenuItemVariant) => void;
+  onAdd: (item: MenuItem, variant?: import('@/types').MenuItemVariant, selectedComponents?: string[]) => void;
   onInfo?: (item: MenuItem) => void;
   searchQuery?: string;
 }) {
-  const isCombo = item.category === 'Combo Blasters' || item.itemType === 'Combo';
+  const isCombo = item.category === 'Combo Blasters' || item.category === 'Budget Friendly Combos' || item.itemType === 'Combo';
   const hasVariants = !!(item.variants && item.variants.length > 0);
 
   // Auto-select variant if user searched for it (e.g. "thick", "veg", "fried")
@@ -190,7 +241,11 @@ function MenuCard({
   const displayQty = currentCartItem?.quantity || totalItemQty;
 
   const handleCardAdd = () => {
-    onAdd(item, activeVariant);
+    if (isCombo && onInfo) {
+      onInfo(item);
+    } else {
+      onAdd(item, activeVariant);
+    }
   };
 
   return (
@@ -424,7 +479,15 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
   const filteredMenu = useMemo(() => {
     let items = menu.filter((m) => m.available);
     if (activeCategory !== 'All') {
-      items = items.filter((m) => m.category === activeCategory);
+      if (activeCategory === "Pizza's" || activeCategory === 'Pizza') {
+        items = items.filter((m) => m.category === "Pizza's" || m.category === 'Pizza');
+      } else if (activeCategory === 'Budget Friendly Combos') {
+        items = items.filter((m) => m.category === 'Budget Friendly Combos' || (m.itemType === 'Combo' && m.category === 'Combo Blasters'));
+      } else if (activeCategory === 'Combo Blasters') {
+        items = items.filter((m) => m.category === 'Combo Blasters' || m.category === 'Budget Friendly Combos' || m.itemType === 'Combo');
+      } else {
+        items = items.filter((m) => m.category === activeCategory);
+      }
     }
     if (searchQuery) {
       const q = searchQuery.toLowerCase().trim();
@@ -443,7 +506,7 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
   }, [menu, activeCategory, searchQuery]);
 
   const handleAddToCart = useCallback(
-    (item: MenuItem, variant?: import('@/types').MenuItemVariant) => {
+    (item: MenuItem, variant?: import('@/types').MenuItemVariant, selectedComponents?: string[]) => {
       if (variant) {
         const variantId = `${item.id}-${variant.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
         const variantName = `${item.name} (${variant.name})`;
@@ -455,11 +518,22 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
           price,
           badge: variant.name,
           selectedVariant: variant.name,
+          selectedComponents,
+        });
+      } else if (selectedComponents && selectedComponents.length > 0) {
+        addToCart({
+          ...item,
+          selectedComponents,
+        });
+      } else if (item.comboComponents && item.comboComponents.length > 0) {
+        addToCart({
+          ...item,
+          selectedComponents: item.comboComponents.map((c) => c.defaultChoice),
         });
       } else {
         addToCart(item);
       }
-      toast.success('Added to cart!', { duration: 800 });
+      toast.success(`Added ${item.name}!`, { duration: 800 });
     },
     [addToCart]
   );
@@ -681,9 +755,8 @@ export default function POSBilling({ onNavigate }: { onNavigate: (v: string) => 
               item={selectedComboItem}
               currency={settings.currency}
               onClose={() => setSelectedComboItem(null)}
-              onAdd={() => {
-                addToCart(selectedComboItem);
-                toast.success(`Added ${selectedComboItem.name}!`);
+              onAdd={(selectedComponents) => {
+                handleAddToCart(selectedComboItem, undefined, selectedComponents);
               }}
             />
           )}
@@ -805,6 +878,15 @@ function CartPanelContent({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-white truncate leading-tight">{item.name}</p>
+                    {item.selectedComponents && item.selectedComponents.length > 0 && (
+                      <div className="mt-0.5 space-y-0.5">
+                        {item.selectedComponents.map((comp, idx) => (
+                          <p key={idx} className="text-[10px] text-white/50 leading-tight truncate">
+                            • {comp}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                     <p className="text-xs text-primary-400 font-semibold mt-0.5">
                       {settings.currency}{(item.price * item.quantity).toLocaleString('en-IN')}
                     </p>

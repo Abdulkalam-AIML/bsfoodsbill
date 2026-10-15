@@ -7,6 +7,12 @@ export interface MenuItemVariant {
   price?: number;       // variant-specific price (overrides base price)
 }
 
+export interface ComboComponentSpec {
+  name: string;          // e.g. "Pizza", "Mojito", "Burger", "Fries", "Wrap", "Maggie", "Milk Shake"
+  options: string[];     // list of eligible choices
+  defaultChoice: string; // sensible default choice
+}
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -20,8 +26,11 @@ export interface MenuItem {
   badge?: string;       // e.g. "Regular ₹99 / Thick ₹149"
   itemType?: 'Item' | 'Combo';
   contains?: string[];
+  comboComponents?: ComboComponentSpec[];
+  selectedComponents?: string[];
   variants?: MenuItemVariant[];
   selectedVariant?: string;
+  isCustom?: boolean;
 }
 
 export interface CartItem extends MenuItem {
@@ -29,6 +38,7 @@ export interface CartItem extends MenuItem {
   notes: string;
   itemDiscount: number;
   selectedVariant?: string;
+  selectedComponents?: string[];
 }
 
 export interface Bill {
@@ -94,6 +104,7 @@ export interface CafeSettings {
 }
 
 export const MENU_CATEGORIES = [
+  "Pizza's",
   'Pop-up Snacks',
   'Housie Cheesy Snacks',
   'Hot & Crispy',
@@ -107,6 +118,7 @@ export const MENU_CATEGORIES = [
   'Sip & Refresh',
   'Dazzling Desserts',
   "Hot Soup's",
+  'Budget Friendly Combos',
   'Pizza',
   'Combo Blasters',
   'Beverages',

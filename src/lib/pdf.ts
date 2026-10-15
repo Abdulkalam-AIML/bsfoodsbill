@@ -435,6 +435,15 @@ export function generateKOTReceipt(bill: Bill, settings?: CafeSettings): jsPDF {
   
   bill.items.forEach((item, index) => {
     lines.push(`${item.quantity} x ${item.name}`);
+    if (item.selectedComponents && item.selectedComponents.length > 0) {
+      item.selectedComponents.forEach((comp) => {
+        lines.push(`   * ${comp}`);
+      });
+    } else if (item.contains && item.contains.length > 0 && (item.itemType === 'Combo' || item.category?.includes('Combo'))) {
+      item.contains.forEach((comp) => {
+        lines.push(`   * ${comp}`);
+      });
+    }
     if (index < bill.items.length - 1) {
       lines.push('');
     }
